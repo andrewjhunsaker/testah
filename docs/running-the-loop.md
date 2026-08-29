@@ -67,9 +67,11 @@ Per [spec.md §11](spec.md). Each is a human stop, not a notification:
 | All Linear tickets | Human flips `status: draft` → `approved`; the Steward then files and sets `status: filed:<id>` | `tickets/drafts/` |
 | Critique adoption | Human | which recommendations become work |
 
-Tickets go to the Linear project named **testah** — including product bugs
-found in targets. A target with `ticketing: direct` in `targets.yaml` skips the
-draft step and files immediately; `vizaeo` is `draft`.
+Tickets file to whatever the top-level `tracker:` block in `targets.yaml`
+configures (testah is tracker-agnostic; Linear via MCP is the reference
+implementation) — including product bugs found in targets. A target with
+`ticketing: direct` skips the draft step and files immediately; `vizaeo` is
+`draft`.
 
 Agents never edit `RULES.md` or `targets.yaml`. Both are human-owned law.
 
@@ -86,15 +88,14 @@ lands in **one** end review. Live deviations, and what they cost:
   Deep Reports inconsistency as expected behavior. Their specs stay in the
   suite (already reviewed + passing); the flag records that the product
   judgments await sign-off.
-- **No per-ticket approval.** All twelve drafts sit at `status: draft`; nothing
-  has been filed, and nothing can be — the **Linear project `testah` does not
-  exist yet**.
-- **Commits go straight to `master`.** There is **no git remote**, so no PR
-  exists for any pass and CI has never run. Branch-and-PR discipline
-  (`scout/<date>`, `author/<date>`) starts at the first push.
-- **A deliberate failure is planted.** `tests/specs/seed-failure.spec.ts`
-  (`@seed-failure`) exists only to exercise triage; `RULES.md` sanctions the tag
-  for exactly that. It makes the suite red until deleted, which the plan expects.
+- **No per-ticket approval yet.** All drafts sit at `status: draft`; the
+  Linear **workspace** `testah` exists (linear.app/ah-lineartestagent) but
+  the MCP session must be OAuth'd to it before the Steward can file.
+- **Remote exists since 2026-08-29** (github.com/andrewjhunsaker/testah);
+  branch-and-PR discipline (`scout/<date>`, `author/<date>`) applies from
+  here on.
+- **The seed failure was deleted 2026-08-29** after triage proved the path;
+  the suite is fully green.
 - **Suite runs against live staging.** `playwright.config.ts` defaults
   `baseURL` to `https://staging.vizaeo.com` and CI passes no env or secrets. It
   works today because every spec is anonymous and read-only; the first
