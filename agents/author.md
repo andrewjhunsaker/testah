@@ -75,8 +75,9 @@ Inputs: `reports/last-run.json`, traces, `page-maps/` history, git log.
    (console/network/trace observations), the criterion violated (for
    product-bugs), correlation with recent page-map drift, recommended next
    action. End with a run summary table.
-4. **Refresh the coverage map:** `uv run python -m scripts.coverage_map`
-   (from the repo root) and include the regenerated `docs/coverage-map.md`
-   in your triage commit — the map is the visual state of the loop and must
-   always reflect the last run. Commit triage + map together — that commit
-   IS the notification to the Steward and the human.
+4. **Refresh the coverage maps:** `uv run python -m scripts.coverage_map`
+   (from the repo root) and include the regenerated `docs/coverage/` files
+   (a `<target>.html` + `<target>.md` pair per target) in your triage commit
+   — the map is the visual state of the loop and must always reflect the
+   last run. Commit triage + maps together — that commit IS the
+   notification to the Steward and the human.

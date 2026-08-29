@@ -15,7 +15,8 @@
 > v0.5 (2026-08-29, post first full loop): criteria-approval gate is
 > ALWAYS-ON (criteria carry `approved:` frontmatter; the human flips it);
 > Author Mode B regenerates the living visual coverage map
-> (`docs/coverage-map.md`, mermaid object-graph via
+> (`docs/coverage/<target>.html` — self-contained, pan/zoom, real tests per
+> feature — plus a flat `<target>.md` for GitHub, both via
 > `scripts/coverage_map.py`); `template` branch = shareable
 > project-data-free starter (testah is project-agnostic — Vizaeo is just the
 > first target); tickets file to the dedicated Linear WORKSPACE `testah`
