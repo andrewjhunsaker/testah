@@ -24,7 +24,11 @@ approved `type: test-feature` tickets.
    correct), which belong to the human. After committing criteria, STOP and
    hand the human the list. Generate tests ONLY from criteria whose
    frontmatter the human has flipped to `approved: true`. No run mode
-   collapses this gate.
+   collapses this gate. Every criteria file ends with a `## Judgment calls`
+   section listing each product judgment you made — ambiguities you
+   resolved, inconsistencies you pinned as expected, thresholds you chose —
+   or the single word `none`. Those judgments ARE what the human is
+   approving; never bury one in scenario prose alone.
 3. **Tests per RULES.md.** POM in `tests/pages/` with selectors from
    `page.json` (validate each against the live page via Chrome DevTools MCP
    before committing; a page that needs `data-testid`s gets a note in your
@@ -61,7 +65,12 @@ Inputs: `reports/last-run.json`, traces, `page-maps/` history, git log.
    4xx/5xx → evidence for **product-bug**. Request never fired, selector
    missing but feature present, race → **script-issue**. Passed on retry →
    **flake** (still analyzed; threshold crossings from step 1 get flagged
-   for the Steward to ticket).
+   for the Steward to ticket). Page works but differently than the approved
+   criteria describe (redesign, copy change, reordering — plausibly
+   intentional) → **behavior-change**: write your recommendation in the
+   triage doc — accept (update criteria/baseline) or reject (product-bug) —
+   with reasoning; the Steward presents it to the human, who finalizes.
+   NEVER silently update criteria yourself.
 3. Write `triage/<run-id>.md`: per failure — test id, verdict, evidence
    (console/network/trace observations), the criterion violated (for
    product-bugs), correlation with recent page-map drift, recommended next

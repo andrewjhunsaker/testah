@@ -60,3 +60,8 @@ articles
 content/nav inconsistency, pinned deliberately
 **And** because the grid is also pinned at nine named cards (Scenario 1), the
 next article added to one list but not the other turns this red.
+## Judgment calls
+- Scenario 3 PINS the known grid/sidebar inconsistency as expected: the
+  sidebar lists 10 articles but the grid shows 9 (no Deep Reports card).
+  Fixing the missing card will turn this test red on purpose. Approving this
+  file endorses that pin; see the related product-bug draft.

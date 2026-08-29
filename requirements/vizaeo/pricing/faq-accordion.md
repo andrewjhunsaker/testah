@@ -53,3 +53,7 @@ conscious change.
 
 This pins the current independent-open behavior, so a redesign to single-open
 accordion semantics is a conscious change rather than a silent one.
+## Judgment calls
+- Pins the four FAQ questions and their verbatim answer copy as the copy of
+  record — any intentional copy edit will surface as a behavior-change
+  triage, not silently pass.

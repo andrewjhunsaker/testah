@@ -44,3 +44,7 @@ failure, and nothing else in the suite would notice.
 
 Without this control, Scenarios 1 and 2 would also pass for an accidentally
 authenticated session, and would therefore prove nothing about public access.
+## Judgment calls
+- Treats public anonymous access to /help and all ten articles as the
+  intended contract (not an oversight), and pins /dashboard remaining
+  Clerk-gated as the control.

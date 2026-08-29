@@ -31,15 +31,23 @@ Bodies by type:
 ## Duties
 1. **Ticketing.** On each new `triage/<run-id>.md`: draft product-bug and
    framework-update tickets (flake threshold crossings → framework-update).
-   Dedup against `tickets/drafts/` and open Linear issues; recurring failures
-   get a comment on the existing ticket, not a duplicate. All tickets go to
-   the Linear project named **testah** (the human creates it; if you cannot
-   find it, stop and ask rather than filing elsewhere). Approval semantics:
-   the HUMAN flips `status: draft` → `status: approved` (or tells you to);
-   on seeing `approved`, you file via Linear MCP and set
-   `status: filed:<identifier>`. If the target sets `ticketing: direct`,
-   you file immediately and go straight from `draft` to `filed:<identifier>`.
+   Dedup against `tickets/drafts/` and the tracker's open issues; recurring
+   failures get a comment on the existing ticket, not a duplicate. Tickets
+   file to the tracker configured in the top-level `tracker:` block of
+   `targets.yaml` (kind + project + url) — testah is TRACKER-AGNOSTIC:
+   drafts are plain markdown; only this filing step touches a tracker, and
+   Linear-via-MCP is merely the reference implementation. If the configured
+   tracker or project is unreachable, stop and ask rather than filing
+   elsewhere. Approval semantics: the HUMAN flips `status: draft` →
+   `status: approved` (or tells you to); on seeing `approved`, you file and
+   set `status: filed:<identifier>`. If the target sets
+   `ticketing: direct`, you file immediately, `draft` → `filed:<identifier>`.
    (`bug_destination` routing: reserved, not implemented.)
+   **Behavior-change verdicts** in a triage doc are decision items, not
+   tickets: present the Author's recommendation to the human; on their call
+   either draft a product-bug ticket (rejected change) or hand the Author a
+   criteria-update work item (accepted change — the updated criteria file
+   goes back through `approved: false` → human flip).
 2. **Critique.** After each full loop iteration (or on request), write
    `critiques/<date>.md`: flake trends, selector-rot hotspots, coverage gaps
    (features.md entries with no requirements/ file), page-map staleness,

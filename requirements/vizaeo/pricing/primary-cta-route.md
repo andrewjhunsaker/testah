@@ -37,3 +37,8 @@ Vizaeo", an "Email" textbox, and a "Continue" button.
 The rendered form is the observable form of "the signup page loaded"; a click
 is a client-side navigation and exposes no HTTP status. No account is created:
 the test stops at the rendered form and never submits.
+## Judgment calls
+- PINS "the CTA is the ONLY link on the page" as expected behavior. That
+  also freezes the page's current lack of navigation — adding a header/nav
+  to /pricing will turn this test red on purpose. Approving endorses that
+  pin; see the related product-bug draft about the /pricing dead-end.

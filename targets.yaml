@@ -1,4 +1,13 @@
 # Human-owned. Agents never crawl or test beyond what is designated here.
+
+# Where approved tickets get filed. testah is tracker-agnostic — drafts are
+# plain markdown in tickets/drafts/; only the Steward's filing step touches
+# this. `kind: linear` (via MCP) is the reference implementation.
+tracker:
+  kind: linear
+  project: testah
+  url: https://linear.app/ah-lineartestagent
+
 targets:
   vizaeo:
     name: Vizaeo (staging)
