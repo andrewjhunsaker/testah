@@ -1,3 +1,6 @@
+---
+approved: false
+---
 # /help — anonymous access to the Help Center
 
 - target: vizaeo

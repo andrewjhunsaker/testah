@@ -3,6 +3,7 @@ type: test-feature
 target: vizaeo
 source: page-maps/vizaeo/pricing
 status: draft
+implemented: requirements/vizaeo/pricing/primary-cta-route.md
 ---
 # Cover the /pricing primary CTA route
 

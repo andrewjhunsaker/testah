@@ -3,6 +3,7 @@ type: test-feature
 target: vizaeo
 source: page-maps/vizaeo/help
 status: draft
+implemented: requirements/vizaeo/help/anonymous-access.md
 ---
 # Cover anonymous access to the Help Center
 

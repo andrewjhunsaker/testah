@@ -1,3 +1,6 @@
+---
+approved: false
+---
 # /pricing — FAQ accordion
 
 - target: vizaeo

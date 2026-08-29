@@ -1,3 +1,6 @@
+---
+approved: false
+---
 # /pricing — primary CTA route
 
 - target: vizaeo

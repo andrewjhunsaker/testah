@@ -3,6 +3,7 @@ type: test-feature
 target: vizaeo
 source: page-maps/vizaeo/help
 status: draft
+implemented: requirements/vizaeo/help/card-grid.md
 ---
 # Cover the Help Center article card grid on /help
 

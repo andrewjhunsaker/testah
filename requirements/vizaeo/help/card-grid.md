@@ -1,3 +1,6 @@
+---
+approved: false
+---
 # /help — Help Center article card grid
 
 - target: vizaeo

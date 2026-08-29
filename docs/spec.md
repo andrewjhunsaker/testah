@@ -1,7 +1,15 @@
-# testah — QA Testing Loop Agent Instruction File (DRAFT v0.4)
+# testah — QA Testing Loop Agent Instruction File (v0.5)
 
-> Status: **draft — all design questions resolved, awaiting final human
-> approval.** This document seeds the standalone `testah` repo once approved.
+> v0.5 (2026-08-29, post first full loop): criteria-approval gate is
+> ALWAYS-ON (criteria carry `approved:` frontmatter; the human flips it);
+> Author Mode B regenerates the living visual coverage map
+> (`docs/coverage-map.md`, mermaid object-graph via
+> `scripts/coverage_map.py`); `template` branch = shareable
+> project-data-free starter (testah is project-agnostic — Vizaeo is just the
+> first target); tickets file to the dedicated Linear WORKSPACE `testah`
+> (linear.app/ah-lineartestagent).
+>
+> Status of the v0.4 text below: built and validated 2026-08-28/29.
 > v0.4: named **testah** (personal project); flake threshold 3 with
 > triage-from-first-failure; model tiers (Opus-class judgment, Haiku
 > human-facing); Scout on-demand, triage per CI run; agent names locked.

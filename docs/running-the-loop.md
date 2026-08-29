@@ -17,7 +17,7 @@ Run every command from the repo root.
 | 2 | **Author Mode A** — `agents/author.md` | human, after the Scout gate | page-maps, `changed-pages.json`, `RULES.md`, approved feature tickets | `requirements/<target>/<slug>/<feature>.md`, `tests/pages/*.ts`, `tests/specs/*.spec.ts` |
 | 2R | **Reviewer** — `agents/reviewer.md` | the Author, as a **fresh subagent** | the Author's diff, `requirements/`, `RULES.md` | `reviews/<date>.md` (`-2`, `-3` for repeat rounds) |
 | 3 | **Agentless run** — `pnpm exec playwright test` | CI on push/PR, or a human locally | `tests/`, `playwright.config.ts` | `reports/last-run.json`, `reports/html/` (both gitignored) |
-| 4 | **Author Mode B** — `agents/author.md` | human, per run that produced failures | `reports/last-run.json`, traces, page-map history, git log | `triage/<run-id>.md`, `flake-history.json` |
+| 4 | **Author Mode B** — `agents/author.md` | human, per run that produced failures | `reports/last-run.json`, traces, page-map history, git log | `triage/<run-id>.md`, `flake-history.json`, `docs/coverage-map.md` (regenerated) |
 | 5 | **Steward** — `agents/steward.md` | human, after triage | triage, reviews, page-maps, `features.md`, drafts, `flake-history.json` | `tickets/drafts/*.md` (`product-bug` / `framework-update`), `critiques/<date>.md`, `docs/` |
 
 Step 2R is not a peer pass: the Author spawns it in fresh context and re-spawns
@@ -40,6 +40,9 @@ self-grading failure the role exists to prevent.
     uv run python scripts/flake_tracker.py reports/last-run.json <run-id>
     # run-id = the CI run number, or local-<date>
 
+    # Author Mode B, after triage — refresh the visual coverage map
+    uv run python -m scripts.coverage_map
+
     # Framework's own tests
     uv run pytest -v
 
@@ -59,7 +62,7 @@ Per [spec.md §11](spec.md). Each is a human stop, not a notification:
 | Gate | Who | What |
 |---|---|---|
 | Page-map updates | Human | PR carrying the drift summary — never raw DOM |
-| Acceptance criteria | Human | **before** any test is generated from them |
+| Acceptance criteria | Human | **ALWAYS ON — no run mode collapses it.** The Author writes criteria with frontmatter `approved: false` and stops; tests are generated only from criteria the human has flipped to `approved: true` |
 | Test framework changes | Reviewer (floor) → Human (merge) | PR |
 | All Linear tickets | Human flips `status: draft` → `approved`; the Steward then files and sets `status: filed:<id>` | `tickets/drafts/` |
 | Critique adoption | Human | which recommendations become work |
@@ -76,10 +79,13 @@ The first iteration (`docs/plans/2026-08-28-testah-v1.md`) deliberately ran
 without inter-agent gates: all five passes ran back to back and everything
 lands in **one** end review. Live deviations, and what they cost:
 
-- **No criteria-approval gate.** The four files in `requirements/` were written
-  and turned into specs in the same pass. They encode product decisions — most
+- **Criteria gate: RESTORED (2026-08-29) and now always-on.** The four
+  validation-run criteria were written and turned into specs in one pass; they
+  now carry `approved: false` frontmatter awaiting the human's flip — most
   visibly `help/card-grid.md` Scenario 3, which pins the known card/sidebar
-  Deep Reports inconsistency as expected behavior. Restore this gate first.
+  Deep Reports inconsistency as expected behavior. Their specs stay in the
+  suite (already reviewed + passing); the flag records that the product
+  judgments await sign-off.
 - **No per-ticket approval.** All twelve drafts sit at `status: draft`; nothing
   has been filed, and nothing can be — the **Linear project `testah` does not
   exist yet**.
@@ -96,4 +102,39 @@ lands in **one** end review. Live deviations, and what they cost:
   not exist yet (`tests/fixtures/` is empty).
 
 When the loop goes production, restore the gates in the order they appear in
-the table above — criteria first.
+the table above — criteria first (done 2026-08-29).
+
+## The coverage map
+
+`docs/coverage-map.md` is the living visual state of the loop: a mermaid
+object-graph (GitHub renders it) of every designated page and its features,
+colored by state — green passing, red failing, amber flaky, blue
+criteria-without-spec, dashed ticket-draft-only — plus a status table
+(stage, approval, last run, flake threshold). It is generated, never
+hand-edited: `uv run python -m scripts.coverage_map`. The Author (Mode B)
+regenerates it in every triage commit. A draft the Author has implemented is
+hidden from the map once the draft's frontmatter gains
+`implemented: <requirements path>` (the Author sets this when consuming it).
+
+## The template branch
+
+`template` is the shareable, project-data-free starter: framework only
+(agents/, scripts/, config, generic docs, placeholder `targets.yaml`), none
+of any target's page-maps/requirements/specs/tickets/triage/critiques/
+flake-history. New adopters clone it and point `targets.yaml` at their app.
+
+Maintenance rule: framework changes land on `master` first; then refresh the
+template with ONLY framework paths —
+
+    git checkout template
+    git checkout master -- agents scripts .github .mcp.json package.json \
+      pnpm-lock.yaml pyproject.toml uv.lock RULES.md docs/spec.md \
+      docs/running-the-loop.md
+    uv run pytest -q && git add -A && git commit -m "sync framework from master"
+    git checkout master
+
+Never checkout project-data paths (`targets.yaml`, `page-maps/`,
+`requirements/`, `tests/specs/`, `tests/pages/`, `tickets/`, `triage/`,
+`critiques/`, `reviews/`, `flake-history.json`, `changed-pages.json`,
+`docs/plans/`, `docs/review-packet-*`, `docs/coverage-map.md`) onto
+`template`.

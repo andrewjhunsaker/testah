@@ -3,6 +3,7 @@ type: test-feature
 target: vizaeo
 source: page-maps/vizaeo/pricing
 status: draft
+implemented: requirements/vizaeo/pricing/faq-accordion.md
 ---
 # Cover the /pricing FAQ accordion
 
