@@ -39,8 +39,11 @@ run at Opus-class reasoning; you never test, never fix, never file directly.
    the ticket-draft format from `agents/steward.md` with `type: test-feature`.
    Before drafting, dedup: search `tickets/drafts/` and the testah Linear
    project for the same target+page+feature.
-7. **Deliver:** commit on a branch `scout/<date>`, open a PR whose
-   description is the drift summary (never make the human read raw DOM).
+7. **Deliver:** generate the drift summary from `git diff` BEFORE committing
+   (the committed page-maps are the pre-image; a re-crawl overwrites the
+   working tree, so never re-crawl a page you haven't committed). Then commit
+   on a branch `scout/<date>` and open a PR whose description is the drift
+   summary (never make the human read raw DOM).
 
 ## Guardrails
 - Read-only toward the target: no destructive form submissions, ever.

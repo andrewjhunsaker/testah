@@ -45,3 +45,46 @@ def test_history_window_caps_at_10_runs():
         update_history(history, f"ok{i}", [{"id": "t1", "status": "expected"}])
     assert len(history["t1"]) == 10
     assert over_threshold(history) == []
+
+
+def test_multi_project_outcomes_get_distinct_ids():
+    report = {
+        "suites": [
+            {
+                "title": "smoke.spec.ts",
+                "specs": [
+                    {
+                        "title": "home page loads",
+                        "tests": [
+                            {"status": "flaky", "projectName": "chromium"},
+                            {"status": "expected", "projectName": "firefox"},
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+    outcomes = extract_outcomes(report)
+    assert {
+        "id": "smoke.spec.ts > home page loads > chromium",
+        "status": "flaky",
+    } in outcomes
+    assert {
+        "id": "smoke.spec.ts > home page loads > firefox",
+        "status": "expected",
+    } in outcomes
+
+
+def test_update_history_is_idempotent_per_run():
+    history = {}
+    for _ in range(3):
+        update_history(history, "run1", [{"id": "t1", "status": "flaky"}])
+    assert len(history["t1"]) == 1
+
+
+def test_over_threshold_ignores_tests_absent_from_current_run():
+    history = {}
+    for i in range(3):
+        update_history(history, f"run{i}", [{"id": "gone", "status": "flaky"}])
+    assert over_threshold(history) == ["gone"]
+    assert over_threshold(history, active_ids={"still-here"}) == []
