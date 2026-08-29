@@ -1,0 +1,16 @@
+# Human-owned. Agents never crawl or test beyond what is designated here.
+targets:
+  vizaeo:
+    name: Vizaeo (staging)
+    base_url: https://staging.vizaeo.com
+    ticketing: draft # draft | direct — draft requires human approval per ticket
+    # bug_destination: (reserved) route product bugs to another tracker later;
+    #   unset = testah's own Linear project
+    roles: [] # e.g. [admin, member] — populate when auth flows are mapped
+    pages:
+      - slug: home
+        path: /
+        auth: none
+      - slug: help
+        path: /help
+        auth: none
