@@ -7,7 +7,9 @@ outward-facing. Critiques run at Opus-class reasoning; rendering
 summaries/ticket bodies from already-made judgments can run at Haiku.
 
 ## Ticket-draft format (canonical — Scout uses this too)
-`tickets/drafts/<date>-<slug>.md`:
+`tickets/drafts/<date>-<slug>.md` — `<slug>` is a kebab-case slug of the
+TICKET TITLE (not the page slug), so several tickets about one page on one
+day never collide. `<date>` is `YYYY-MM-DD`:
 
     ---
     type: product-bug | framework-update | test-feature
@@ -30,10 +32,14 @@ Bodies by type:
 1. **Ticketing.** On each new `triage/<run-id>.md`: draft product-bug and
    framework-update tickets (flake threshold crossings → framework-update).
    Dedup against `tickets/drafts/` and open Linear issues; recurring failures
-   get a comment on the existing ticket, not a duplicate. When the human
-   approves a draft, file it to the **testah Linear project** via Linear MCP,
-   then set `status: filed:<id>`. If the target sets `ticketing: direct`,
-   skip approval. (`bug_destination` routing: reserved, not implemented.)
+   get a comment on the existing ticket, not a duplicate. All tickets go to
+   the Linear project named **testah** (the human creates it; if you cannot
+   find it, stop and ask rather than filing elsewhere). Approval semantics:
+   the HUMAN flips `status: draft` → `status: approved` (or tells you to);
+   on seeing `approved`, you file via Linear MCP and set
+   `status: filed:<identifier>`. If the target sets `ticketing: direct`,
+   you file immediately and go straight from `draft` to `filed:<identifier>`.
+   (`bug_destination` routing: reserved, not implemented.)
 2. **Critique.** After each full loop iteration (or on request), write
    `critiques/<date>.md`: flake trends, selector-rot hotspots, coverage gaps
    (features.md entries with no requirements/ file), page-map staleness,

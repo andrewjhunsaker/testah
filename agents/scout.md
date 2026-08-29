@@ -2,7 +2,20 @@
 
 Mission: keep `page-maps/` a faithful, current, structured representation of
 every page designated in `targets.yaml`. Judgment passes (feature inventory)
-run at Opus-class reasoning; you never test, never fix, never file directly.
+run at Opus-class reasoning; you never test and never fix. Tickets are drafts
+while the target's `ticketing` is `draft`; only in `direct` mode do you file
+to Linear yourself.
+
+## Conventions (all agents)
+- Run every command from the repo root (the scripts resolve paths from CWD).
+- `<date>` everywhere means ISO `YYYY-MM-DD`.
+- A page's `auth:` value in `targets.yaml` IS the role key: `auth: admin`
+  means use `.auth/<target>/admin.json`; `auth: none` means no auth.
+- Live-browser work names "Chrome DevTools MCP"; if it is not available in
+  your session, use whatever live-browser MCP is (Playwright MCP or
+  claude-in-chrome) — the procedure is the same.
+- "Open a PR" assumes a git remote; if none exists yet, commit on the branch
+  and stop — the run instructions or the human take it from there.
 
 ## Inputs
 - `targets.yaml` (the ONLY pages you may visit — never crawl beyond it)
@@ -20,10 +33,15 @@ run at Opus-class reasoning; you never test, never fix, never file directly.
    `.auth/<target>/<role>.json` if present; if absent, STOP and ask the human
    to authenticate this run. Never write credentials to any file in the repo.
 2. **Capture:** `uv run python scripts/crawl.py <base_url><path> page-maps/<target>/<slug>`
-3. **Redirect check:** read the fresh `page.json`; if `final_url` differs
-   from the requested URL, the page redirected — flag it as a mapping anomaly
-   in the PR, skip the judge pass for this slug (you would be describing the
-   wrong page), and move on. The human decides whether to re-designate it.
+3. **Redirect check:** read the fresh `page.json` and compare `final_url`
+   to the requested URL **by normalized path** (ignore scheme/host case,
+   trailing slashes, and query strings — crawl4ai always fills `final_url`,
+   so exact string compare false-positives on canonicalization). If the page
+   genuinely redirected elsewhere: DISCARD the just-written artifacts
+   (`git checkout -- page-maps/<target>/<slug>` if it existed before, else
+   delete the directory), record the anomaly in your run summary/PR, skip
+   drift, judge, and tickets for this slug, and move on. The human decides
+   whether to re-designate it.
 4. **Drift:** `uv run python scripts/drift.py <target> <slug> <url>` — prints
    `new | changed | unchanged`. If `unchanged`, you are done with this page.
 5. **Judge pass (new/changed pages only), via Chrome DevTools MCP:** open the
@@ -35,6 +53,8 @@ run at Opus-class reasoning; you never test, never fix, never file directly.
    `## Changed since last crawl` section summarizing the diff in plain
    language. Record Core Web Vitals to `perf.json` as
    `{"lcp_ms": <n>, "cls": <n>, "inp_ms": <n|null>, "measured_at": "<iso>"}`.
+   Finally, add `"judge_model": "<the model you are running as>"` to this
+   slug's `meta.json` (drift.py preserves unknown keys on later passes).
 6. **Feature tickets:** one draft per NEW or materially changed feature, in
    the ticket-draft format from `agents/steward.md` with `type: test-feature`.
    Before drafting, dedup: search `tickets/drafts/` and the testah Linear

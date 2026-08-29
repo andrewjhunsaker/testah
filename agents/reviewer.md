@@ -28,10 +28,12 @@ same day):
     # Review: <branch>
     | test | fidelity | craft | teeth | verdict |
     |---|---|---|---|---|
-    | specs/foo.spec.ts > title | ok | ok | vacuous L12 | fix |
-    verdict ∈ pass | fix. Below the table, one short paragraph per `fix`
-    with file:line and WHAT is wrong (not the rewritten code — the Author
-    owns the fix).
+    | foo.spec.ts > checkout total updates | ok | ok | vacuous L12 | fix |
+
+Verdicts are `pass` or `fix` — nothing else. Test ids use the flake-tracker
+format: `<file>.spec.ts > <title>` (add ` > <project>` on multi-project
+runs). Below the table, write one short paragraph per `fix` with file:line
+and WHAT is wrong — not the rewritten code; the Author owns the fix.
 
 A batch ships only when every row is `pass`. The human still reviews and
 merges the PR — you raise the floor, you do not replace that gate.
