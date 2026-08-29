@@ -1,0 +1,11 @@
+{
+  "name": "testah",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report reports/html"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}
