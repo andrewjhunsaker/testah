@@ -1,0 +1,206 @@
+{
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > @smoke the Help Center index is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/getting-started is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/what-is-vizaeo is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/how-ai-visibility-works is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/understanding-results is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/deep-reports is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/metrics is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/platforms is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/account is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/faq is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > article /help/support is public > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-anonymous-access.spec.ts > /help \u2014 anonymous access > the same anonymous session is still gated on /dashboard > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > @smoke renders exactly the nine article cards > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"Getting Started\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"What is Vizaeo?\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"How AI Visibility Works\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"Understanding Your Results\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"The 11 Visibility Metrics\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"The Five AI Platforms\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"Account & Settings\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"FAQ\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > card \"Contact Support\" routes to its article > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "help-card-grid.spec.ts > /help \u2014 article card grid > grid and sidebar cover the same articles, minus the known Deep Reports gap > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-faq-accordion.spec.ts > /pricing \u2014 FAQ accordion > renders four questions, all collapsed on load > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-faq-accordion.spec.ts > /pricing \u2014 FAQ accordion > expanding \"What do I get after purchase?\" reveals its answer > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-faq-accordion.spec.ts > /pricing \u2014 FAQ accordion > expanding \"Is this a monthly subscription?\" reveals its answer > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-faq-accordion.spec.ts > /pricing \u2014 FAQ accordion > expanding \"How quickly is the visibility scoreboard delivered?\" reveals its answer > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-faq-accordion.spec.ts > /pricing \u2014 FAQ accordion > expanding \"Is my payment and business data secure?\" reveals its answer > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-faq-accordion.spec.ts > /pricing \u2014 FAQ accordion > two items can be open at the same time > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-primary-cta.spec.ts > /pricing \u2014 primary CTA > @smoke the CTA renders and is the only link on the page > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "pricing-primary-cta.spec.ts > /pricing \u2014 primary CTA > following the CTA reaches the signup page > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "seed-failure.spec.ts > @seed-failure heading that does not exist > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "smoke.spec.ts > @smoke unauthenticated root redirects to sign-in > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ],
+  "smoke.spec.ts > @smoke help center is publicly reachable > chromium": [
+    {
+      "run": "local-2026-08-28",
+      "flaky": false
+    }
+  ]
+}
