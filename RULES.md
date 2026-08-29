@@ -9,7 +9,7 @@ The Author and Reviewer treat this file as law. Humans edit it; agents never do.
 ## Page Object Model
 - Required for every spec. POMs live in `tests/pages/`, one class per page,
   named `<Slug>Page` (e.g. `HomePage`).
-- Selectors come from the page-map (`page.json`). Preference order:
+- Selectors come from the page-map (`page-maps/<target>/<slug>/page.json`). Preference order:
   `getByRole` > `getByTestId` > CSS id. Raw text/CSS selectors need a
   justifying comment.
 

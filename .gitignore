@@ -5,5 +5,8 @@ reports/*
 .auth/
 .venv/
 __pycache__/
+.pytest_cache/
 *.pyc
+.env
+.env.*
 .DS_Store
