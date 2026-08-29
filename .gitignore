@@ -1,0 +1,9 @@
+node_modules/
+test-results/
+reports/
+!reports/.gitkeep
+.auth/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
