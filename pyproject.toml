@@ -1,0 +1,12 @@
+[project]
+name = "testah-scripts"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["crawl4ai>=0.4", "beautifulsoup4>=4.12"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["scripts/tests"]
