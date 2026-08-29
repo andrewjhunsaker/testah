@@ -16,7 +16,7 @@ def _selector(el) -> str | None:
     if el.get("data-testid"):
         return f'[data-testid="{el["data-testid"]}"]'
     if el.get("id"):
-        return f"#{el['id']}"
+        return f'[id="{el["id"]}"]'
     return None
 
 
@@ -59,10 +59,19 @@ async def crawl_page(url: str, out_dir: Path) -> dict:
 
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url=url)
+    if not result.success:
+        raise RuntimeError(f"crawl failed for {url}: {result.error_message}")
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "page.md").write_text(str(result.markdown))
-    page = {"url": url, **extract_elements(result.html)}
-    (out_dir / "page.json").write_text(json.dumps(page, indent=2) + "\n")
+    (out_dir / "page.md").write_text(str(result.markdown), encoding="utf-8")
+    page = {
+        "url": url,
+        "final_url": result.redirected_url or url,
+        "status_code": result.status_code,
+        **extract_elements(result.html),
+    }
+    (out_dir / "page.json").write_text(
+        json.dumps(page, indent=2) + "\n", encoding="utf-8"
+    )
     return page
 
 
