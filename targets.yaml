@@ -8,9 +8,11 @@ targets:
     #   unset = testah's own Linear project
     roles: [] # e.g. [admin, member] — populate when auth flows are mapped
     pages:
-      - slug: home
-        path: /
-        auth: none
       - slug: help
         path: /help
         auth: none
+      - slug: pricing
+        path: /pricing
+        auth: none
+      # / (home) is Clerk-gated on staging (307 → /login); add it back with a
+      # role once auth flows are mapped

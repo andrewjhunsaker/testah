@@ -1,6 +1,7 @@
 {
   "name": "testah",
   "private": true,
+  "packageManager": "pnpm@10.0.0",
   "scripts": {
     "test": "playwright test",
     "report": "playwright show-report reports/html"

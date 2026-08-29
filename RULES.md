@@ -26,3 +26,8 @@ The Author and Reviewer treat this file as law. Humans edit it; agents never do.
 ## Traceability
 - Each spec file header comments the acceptance criterion it implements:
   `// implements: requirements/<target>/<slug>/<feature>.md`
+
+## Bootstrap exception
+- `tests/specs/smoke.spec.ts` predates the loop: it is a scaffold health
+  check, exempt from the POM and traceability rules above. Every
+  agent-authored spec MUST comply. No other exemptions exist.
