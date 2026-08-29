@@ -55,8 +55,14 @@ to Linear yourself.
    `{"lcp_ms": <n>, "cls": <n>, "inp_ms": <n|null>, "measured_at": "<iso>"}`.
    Finally, add `"judge_model": "<the model you are running as>"` to this
    slug's `meta.json` (drift.py preserves unknown keys on later passes).
-6. **Feature tickets:** one draft per NEW or materially changed feature, in
-   the ticket-draft format from `agents/steward.md` with `type: test-feature`.
+6. **Feature tickets AND observed defects:** one draft per NEW or materially
+   changed feature, in the ticket-draft format from `agents/steward.md` with
+   `type: test-feature`. Separately, every product defect you DIRECTLY
+   OBSERVE during the judge pass — console errors, broken/dead-end links,
+   accessibility failures, Core Web Vitals in the "poor" band — becomes a
+   `type: product-bug` draft with your observation as the evidence.
+   Test-feature drafts propose coverage; product-bug drafts propose fixes;
+   never fold a defect into a feature draft where it can hide.
    Before drafting, dedup: search `tickets/drafts/` and the testah Linear
    project for the same target+page+feature.
 7. **Deliver:** generate the drift summary from `git diff` BEFORE committing

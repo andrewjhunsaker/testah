@@ -1,13 +1,22 @@
 # Human-owned. Agents never crawl or test beyond what is designated here.
 # Replace the example target with your app. One entry per target; testah is
 # project-agnostic and can maintain several targets side by side.
+
+# Where approved tickets get filed. testah is tracker-agnostic — drafts are
+# plain markdown in tickets/drafts/; only the Steward's filing step touches
+# this. `kind: linear` (via MCP) is the reference implementation.
+tracker:
+  kind: linear
+  project: replace-me
+  url: https://linear.app/replace-me
+
 targets:
-  example:
-    name: Example (replace me)
-    base_url: https://example.com
+  toolshop:
+    name: Toolshop demo (replace me — practice target)
+    base_url: https://practicesoftwaretesting.com
     ticketing: draft # draft | direct — draft requires human approval per ticket
     # bug_destination: (reserved) route product bugs to another tracker later;
-    #   unset = testah's own Linear project
+    #   unset = the tracker configured above
     roles: [] # e.g. [admin, member] — a page's `auth:` value is the role key
     pages:
       - slug: home

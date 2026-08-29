@@ -10,7 +10,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: process.env.TESTAH_BASE_URL ?? 'https://example.com',
+    baseURL: process.env.TESTAH_BASE_URL ?? 'https://practicesoftwaretesting.com',
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

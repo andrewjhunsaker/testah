@@ -17,7 +17,7 @@ Run every command from the repo root.
 | 2 | **Author Mode A** — `agents/author.md` | human, after the Scout gate | page-maps, `changed-pages.json`, `RULES.md`, approved feature tickets | `requirements/<target>/<slug>/<feature>.md`, `tests/pages/*.ts`, `tests/specs/*.spec.ts` |
 | 2R | **Reviewer** — `agents/reviewer.md` | the Author, as a **fresh subagent** | the Author's diff, `requirements/`, `RULES.md` | `reviews/<date>.md` (`-2`, `-3` for repeat rounds) |
 | 3 | **Agentless run** — `pnpm exec playwright test` | CI on push/PR, or a human locally | `tests/`, `playwright.config.ts` | `reports/last-run.json`, `reports/html/` (both gitignored) |
-| 4 | **Author Mode B** — `agents/author.md` | human, per run that produced failures | `reports/last-run.json`, traces, page-map history, git log | `triage/<run-id>.md`, `flake-history.json`, `docs/coverage-map.md` (regenerated) |
+| 4 | **Author Mode B** — `agents/author.md` | human, per run that produced failures | `reports/last-run.json`, traces, page-map history, git log | `triage/<run-id>.md`, `flake-history.json`, `docs/coverage/<target>.{html,md}` (regenerated) |
 | 5 | **Steward** — `agents/steward.md` | human, after triage | triage, reviews, page-maps, `features.md`, drafts, `flake-history.json` | `tickets/drafts/*.md` (`product-bug` / `framework-update`), `critiques/<date>.md`, `docs/` |
 
 Step 2R is not a peer pass: the Author spawns it in fresh context and re-spawns
@@ -67,9 +67,11 @@ Per [spec.md §11](spec.md). Each is a human stop, not a notification:
 | All Linear tickets | Human flips `status: draft` → `approved`; the Steward then files and sets `status: filed:<id>` | `tickets/drafts/` |
 | Critique adoption | Human | which recommendations become work |
 
-Tickets go to the Linear project named **testah** — including product bugs
-found in targets. A target with `ticketing: direct` in `targets.yaml` skips the
-draft step and files immediately; `vizaeo` is `draft`.
+Tickets file to whatever the top-level `tracker:` block in `targets.yaml`
+configures (testah is tracker-agnostic; Linear via MCP is the reference
+implementation) — including product bugs found in targets. A target with
+`ticketing: direct` skips the draft step and files immediately; `vizaeo` is
+`draft`.
 
 Agents never edit `RULES.md` or `targets.yaml`. Both are human-owned law.
 
@@ -86,15 +88,14 @@ lands in **one** end review. Live deviations, and what they cost:
   Deep Reports inconsistency as expected behavior. Their specs stay in the
   suite (already reviewed + passing); the flag records that the product
   judgments await sign-off.
-- **No per-ticket approval.** All twelve drafts sit at `status: draft`; nothing
-  has been filed, and nothing can be — the **Linear project `testah` does not
-  exist yet**.
-- **Commits go straight to `master`.** There is **no git remote**, so no PR
-  exists for any pass and CI has never run. Branch-and-PR discipline
-  (`scout/<date>`, `author/<date>`) starts at the first push.
-- **A deliberate failure is planted.** `tests/specs/seed-failure.spec.ts`
-  (`@seed-failure`) exists only to exercise triage; `RULES.md` sanctions the tag
-  for exactly that. It makes the suite red until deleted, which the plan expects.
+- **No per-ticket approval yet.** All drafts sit at `status: draft`; the
+  Linear **workspace** `testah` exists (linear.app/ah-lineartestagent) but
+  the MCP session must be OAuth'd to it before the Steward can file.
+- **Remote exists since 2026-08-29** (github.com/andrewjhunsaker/testah);
+  branch-and-PR discipline (`scout/<date>`, `author/<date>`) applies from
+  here on.
+- **The seed failure was deleted 2026-08-29** after triage proved the path;
+  the suite is fully green.
 - **Suite runs against live staging.** `playwright.config.ts` defaults
   `baseURL` to `https://staging.vizaeo.com` and CI passes no env or secrets. It
   works today because every spec is anonymous and read-only; the first
@@ -106,15 +107,31 @@ the table above — criteria first (done 2026-08-29).
 
 ## The coverage map
 
-`docs/coverage-map.md` is the living visual state of the loop: a mermaid
-object-graph (GitHub renders it) of every designated page and its features,
-colored by state — green passing, red failing, amber flaky, blue
-criteria-without-spec, dashed ticket-draft-only — plus a status table
-(stage, approval, last run, flake threshold). It is generated, never
-hand-edited: `uv run python -m scripts.coverage_map`. The Author (Mode B)
-regenerates it in every triage commit. A draft the Author has implemented is
-hidden from the map once the draft's frontmatter gains
-`implemented: <requirements path>` (the Author sets this when consuming it).
+`docs/coverage/` holds the living visual state of the loop — one pair of
+files per target in `targets.yaml`:
+
+- **`docs/coverage/<target>.html` — the real map.** Open it in a browser
+  (`open docs/coverage/vizaeo.html`). One section per designated page, one
+  card per feature, and inside each card the ACTUAL tests that implement it
+  (the individual test titles from the last run, each with its own status
+  dot). The card's accent says where the feature stands: green passing, red
+  failing, amber flaky, blue criteria written but no tests yet, dashed grey
+  ticket-draft-only, grey not run — plus a plain-language note when you owe
+  it something ("criteria awaiting your approval", "ticket draft only",
+  "⚠ over flake threshold"). The map is a pan/zoom surface: drag to pan
+  (mouse or touch), scroll to zoom at the cursor once you have touched the
+  map, pinch on a trackpad or touchscreen, or use the +/−/reset toolbar.
+  The file is fully self-contained — inline CSS and JS, no network requests
+  — so it works from disk, in a sandbox, or attached to a PR.
+- **`docs/coverage/<target>.md` — the flat companion**, for GitHub (which
+  cannot run the html): `page | feature | tests | last run | notes`, with
+  scaffolding specs listed at the bottom. No mermaid.
+
+Both are generated, never hand-edited: `uv run python -m scripts.coverage_map`.
+The Author (Mode B) regenerates them in every triage commit. A draft the
+Author has implemented is hidden from the map once the draft's frontmatter
+gains `implemented: <requirements path>` (the Author sets this when
+consuming it).
 
 ## The template branch
 
@@ -136,5 +153,5 @@ template with ONLY framework paths —
 Never checkout project-data paths (`targets.yaml`, `page-maps/`,
 `requirements/`, `tests/specs/`, `tests/pages/`, `tickets/`, `triage/`,
 `critiques/`, `reviews/`, `flake-history.json`, `changed-pages.json`,
-`docs/plans/`, `docs/review-packet-*`, `docs/coverage-map.md`) onto
+`docs/plans/`, `docs/review-packet-*`, `docs/coverage/`) onto
 `template`.

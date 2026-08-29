@@ -1,9 +1,22 @@
-# testah — QA Testing Loop Agent Instruction File (v0.5)
+# testah — QA Testing Loop Agent Instruction File (v0.6)
+
+> v0.6 (2026-08-29): Scout files `product-bug` drafts for defects it
+> directly observes (closes the "seen but never ticketed" gap); triage gains
+> a **behavior-change** verdict (plausibly-intentional divergence → Author
+> recommendation → human finalizes; criteria never silently updated);
+> criteria files must end with a `## Judgment calls` section — the explicit
+> list of product judgments the human's `approved: true` endorses;
+> tracker-agnostic `tracker:` block in targets.yaml (Linear MCP = reference
+> implementation only); coverage maps split per target. PROPOSED, not yet
+> wired: "benchmark run" gate model (§ discussion in review) where criteria
+> confirmation happens after the first run instead of before test
+> generation.
 
 > v0.5 (2026-08-29, post first full loop): criteria-approval gate is
 > ALWAYS-ON (criteria carry `approved:` frontmatter; the human flips it);
 > Author Mode B regenerates the living visual coverage map
-> (`docs/coverage-map.md`, mermaid object-graph via
+> (`docs/coverage/<target>.html` — self-contained, pan/zoom, real tests per
+> feature — plus a flat `<target>.md` for GitHub, both via
 > `scripts/coverage_map.py`); `template` branch = shareable
 > project-data-free starter (testah is project-agnostic — Vizaeo is just the
 > first target); tickets file to the dedicated Linear WORKSPACE `testah`
