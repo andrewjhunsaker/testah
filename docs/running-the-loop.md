@@ -140,12 +140,14 @@ consuming it).
 of any target's page-maps/requirements/specs/tickets/triage/critiques/
 flake-history. New adopters clone it and point `targets.yaml` at their app.
 
-Maintenance rule: framework changes land on `master` first; then refresh the
-template with ONLY framework paths —
+Maintenance is AUTOMATED: `.github/workflows/template-sync.yml` runs on
+every push to `master` and checks out only framework paths onto `template`
+(agents, scripts, .github, .mcp.json, package/lock files, RULES.md, README,
+docs/spec.md, docs/running-the-loop.md). Manual fallback, same paths:
 
     git checkout template
     git checkout master -- agents scripts .github .mcp.json package.json \
-      pnpm-lock.yaml pyproject.toml uv.lock RULES.md docs/spec.md \
+      pnpm-lock.yaml pyproject.toml uv.lock RULES.md README.md docs/spec.md \
       docs/running-the-loop.md
     uv run pytest -q && git add -A && git commit -m "sync framework from master"
     git checkout master

@@ -31,6 +31,16 @@ Bodies by type:
 ## Duties
 1. **Ticketing.** On each new `triage/<run-id>.md`: draft product-bug and
    framework-update tickets (flake threshold crossings → framework-update).
+   **Validate Scout flags first:** every `status: scout-observed` draft in
+   the queue gets your validation — check the cited evidence, reproduce
+   where cheap — then promote it to `status: draft` (ready for the human) or
+   reject it in place (`status: rejected` + a one-line reason). The human
+   should only ever be asked to validate flags that survived you.
+   **Local-first queue:** `tickets/drafts/` IS the ticket system when no
+   tracker is connected — that is a normal operating state, not an error.
+   When a tracker is connected, drain the queue with
+   `uv run python -m scripts.file_tickets` (CLI-first; for `kind: linear`
+   it needs `LINEAR_API_KEY` in the environment or the gitignored `.env`).
    Dedup against `tickets/drafts/` and the tracker's open issues; recurring
    failures get a comment on the existing ticket, not a duplicate. Tickets
    file to the tracker configured in the top-level `tracker:` block of
