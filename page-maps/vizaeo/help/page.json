@@ -1,0 +1,155 @@
+{
+  "url": "https://staging.vizaeo.com/help",
+  "final_url": "https://staging.vizaeo.com/help",
+  "status_code": 307,
+  "title": "Vizaeo - AI Visibility Analytics",
+  "headings": [
+    {
+      "level": 1,
+      "text": "Help Center"
+    }
+  ],
+  "nav": [
+    {
+      "text": "Help Center",
+      "href": "/help"
+    },
+    {
+      "text": "What is Vizaeo?",
+      "href": "/help/what-is-vizaeo"
+    },
+    {
+      "text": "How AI Visibility Works",
+      "href": "/help/how-ai-visibility-works"
+    },
+    {
+      "text": "Getting Started",
+      "href": "/help/getting-started"
+    },
+    {
+      "text": "Understanding Your Results",
+      "href": "/help/understanding-results"
+    },
+    {
+      "text": "Competitor Deep Reports",
+      "href": "/help/deep-reports"
+    },
+    {
+      "text": "The 11 Visibility Metrics",
+      "href": "/help/metrics"
+    },
+    {
+      "text": "The Five AI Platforms",
+      "href": "/help/platforms"
+    },
+    {
+      "text": "Account & Settings",
+      "href": "/help/account"
+    },
+    {
+      "text": "FAQ",
+      "href": "/help/faq"
+    },
+    {
+      "text": "Contact Support",
+      "href": "/help/support"
+    }
+  ],
+  "links": [
+    {
+      "text": "Vizaeo",
+      "href": "/dashboard"
+    },
+    {
+      "text": "\u2190 Back to app",
+      "href": "/dashboard"
+    },
+    {
+      "text": "Help Center",
+      "href": "/help"
+    },
+    {
+      "text": "What is Vizaeo?",
+      "href": "/help/what-is-vizaeo"
+    },
+    {
+      "text": "How AI Visibility Works",
+      "href": "/help/how-ai-visibility-works"
+    },
+    {
+      "text": "Getting Started",
+      "href": "/help/getting-started"
+    },
+    {
+      "text": "Understanding Your Results",
+      "href": "/help/understanding-results"
+    },
+    {
+      "text": "Competitor Deep Reports",
+      "href": "/help/deep-reports"
+    },
+    {
+      "text": "The 11 Visibility Metrics",
+      "href": "/help/metrics"
+    },
+    {
+      "text": "The Five AI Platforms",
+      "href": "/help/platforms"
+    },
+    {
+      "text": "Account & Settings",
+      "href": "/help/account"
+    },
+    {
+      "text": "FAQ",
+      "href": "/help/faq"
+    },
+    {
+      "text": "Contact Support",
+      "href": "/help/support"
+    },
+    {
+      "text": "\ud83d\ude80Getting StartedSet up your business and run your first AI visibility analysis.",
+      "href": "/help/getting-started"
+    },
+    {
+      "text": "\ud83d\udca1What is Vizaeo?Understand AI visibility and why it matters for your business.",
+      "href": "/help/what-is-vizaeo"
+    },
+    {
+      "text": "\ud83e\udde0How AI Visibility WorksThe theory behind AI recommendations, scoring, and Share of Voice.",
+      "href": "/help/how-ai-visibility-works"
+    },
+    {
+      "text": "\ud83d\udccaUnderstanding Your ResultsLearn what your Score, Gaps, Fix, and Watch tabs mean.",
+      "href": "/help/understanding-results"
+    },
+    {
+      "text": "\ud83d\udccfThe 11 Visibility MetricsWhat each metric measures and how to improve it.",
+      "href": "/help/metrics"
+    },
+    {
+      "text": "\ud83e\udd16The Five AI PlatformsChatGPT, Claude, Gemini, Grok, Perplexity \u2014 and how they differ.",
+      "href": "/help/platforms"
+    },
+    {
+      "text": "\u2699\ufe0fAccount & SettingsThemes, API keys, billing, privacy, and accessibility.",
+      "href": "/help/account"
+    },
+    {
+      "text": "\u2753FAQCommon questions about AI visibility, pricing, and features.",
+      "href": "/help/faq"
+    },
+    {
+      "text": "\ud83d\udcacContact SupportSubmit a ticket and track your support requests.",
+      "href": "/help/support"
+    }
+  ],
+  "buttons": [
+    {
+      "text": "",
+      "selector": null
+    }
+  ],
+  "forms": []
+}
