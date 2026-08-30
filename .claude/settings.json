@@ -1,0 +1,43 @@
+{
+  "enabledMcpjsonServers": ["chrome-devtools", "linear"],
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(uv run python -m scripts.:*)",
+      "Bash(uv run python scripts/:*)",
+      "Bash(pnpm exec playwright test:*)",
+      "Bash(pnpm install:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git switch -c:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh run download:*)"
+    ],
+    "ask": [
+      "Edit(./RULES.md)",
+      "Edit(./targets.yaml)",
+      "Edit(./CLAUDE.md)",
+      "Edit(./.claude/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pytest-tripwire.sh",
+            "timeout": 60,
+            "statusMessage": "pytest tripwire"
+          }
+        ]
+      }
+    ]
+  }
+}

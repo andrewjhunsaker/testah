@@ -105,6 +105,45 @@ lands in **one** end review. Live deviations, and what they cost:
 When the loop goes production, restore the gates in the order they appear in
 the table above — criteria first (done 2026-08-29).
 
+## The Claude Code harness
+
+Claude Code is the reference harness, and the repo ships a thin, committed
+configuration for it (`CLAUDE.md` + `.claude/`). Everything in it POINTS at
+`agents/*.md` — the harness-agnostic source of truth — and never restates it.
+
+- **Slash commands** (`.claude/skills/`): `/scout <target>`,
+  `/author <target>`, `/triage <run-id>`, `/steward`, `/loop-status`
+  (read-only artifact-grounded state report). All are human-only triggers
+  (`disable-model-invocation: true`) — the model cannot fire a pass on its
+  own, preserving the human-gated loop.
+- **Typed Reviewer** (`.claude/agents/reviewer.md`): the Author's checkpoint
+  spawn targets `subagent_type: reviewer` — fresh context guaranteed by the
+  harness, tools restricted to Read/Grep/Glob/Write (it can write its
+  `reviews/<date>.md` verdict but structurally cannot edit code or run
+  shell). Scout/Author/Steward deliberately have NO agent types: they are
+  human-started top-level passes, and subagents cannot spawn subagents (an
+  Author-as-subagent could not spawn its Reviewer).
+- **Permissions** (`.claude/settings.json`): routine loop commands (pytest,
+  playwright, the scripts CLIs, git/gh basics) are pre-approved; edits to
+  the human-owned law files (`RULES.md`, `targets.yaml`, `CLAUDE.md`,
+  `.claude/`) always prompt the human (ask-gate). Known limit: permission
+  rules do not cover Bash-mediated writes (`sed -i`, `>>`) — the agent-file
+  prose remains the primary defense; a PreToolUse Bash scan is backlog
+  hardening.
+- **Regression tripwire** (`.claude/hooks/pytest-tripwire.sh`): after any
+  Edit/Write to `scripts/*.py`, the sub-second unit suite runs; on failure
+  the hook exits 2 with pytest output so the session sees the breakage
+  immediately. Fails open when `uv` is absent (adopters without the
+  toolchain).
+- **Personal overrides** go in `.claude/settings.local.json` (gitignored) —
+  never in the committed settings.
+- **Standing rule:** any harness change updates THIS section in the same
+  commit, and framework paths (including `.claude/` and `CLAUDE.md`) sync to
+  the `template` branch automatically.
+
+Other LLM harnesses ignore all of this and use `agents/*.md` directly (see
+README "Running the agents on your LLM platform").
+
 ## The coverage map
 
 `docs/coverage/` holds the living visual state of the loop — one pair of
@@ -146,9 +185,9 @@ every push to `master` and checks out only framework paths onto `template`
 docs/spec.md, docs/running-the-loop.md). Manual fallback, same paths:
 
     git checkout template
-    git checkout master -- agents scripts .github .mcp.json package.json \
-      pnpm-lock.yaml pyproject.toml uv.lock RULES.md README.md docs/spec.md \
-      docs/running-the-loop.md
+    git checkout master -- agents scripts .github .claude CLAUDE.md \
+      .mcp.json package.json pnpm-lock.yaml pyproject.toml uv.lock RULES.md \
+      README.md docs/spec.md docs/running-the-loop.md
     uv run pytest -q && git add -A && git commit -m "sync framework from master"
     git checkout master
 
