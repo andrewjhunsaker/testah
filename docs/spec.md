@@ -1,5 +1,12 @@
 # testah — QA Testing Loop Agent Instruction File (v0.6)
 
+> v0.6.1 (2026-08-30): Claude Code harness formalized and committed —
+> CLAUDE.md, `.claude/` (slash commands per pass, tool-restricted `reviewer`
+> agent type, ask-gates on human-owned law files, pytest tripwire hook);
+> synced to `template`. `agents/*.md` remains the harness-agnostic source of
+> truth; all harness artifacts are pointers. See docs/running-the-loop.md
+> "The Claude Code harness".
+>
 > v0.6 (2026-08-29): Scout files `product-bug` drafts for defects it
 > directly observes (closes the "seen but never ticketed" gap); triage gains
 > a **behavior-change** verdict (plausibly-intentional divergence → Author

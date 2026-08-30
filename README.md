@@ -37,7 +37,12 @@ and run shell commands, (2) drive a browser (an MCP or its own tooling), and
 (3) spawn a fresh-context subagent for the Reviewer can run the loop: start
 a session in this repo and give it one agent file as its instructions
 (e.g. "Follow agents/scout.md for target <key>"). Claude Code is the
-reference harness (`.mcp.json` wires Chrome DevTools + Linear MCPs), but
-Cursor, Copilot CLI, Codex, Gemini CLI, or a custom Agent-SDK program work
-the same way — the repo's committed artifacts are the only interface between
-passes, and the Playwright suite itself runs with no LLM at all.
+reference harness and ships committed config (`CLAUDE.md` + `.claude/`):
+`/scout <target>`, `/author <target>`, `/triage <run-id>`, `/steward`, and
+`/loop-status` replace pasting prose, the Reviewer is a tool-restricted
+agent type, edits to the human-owned law files always prompt you, a
+post-edit pytest tripwire guards `scripts/`, and `.mcp.json` wires Chrome
+DevTools + Linear MCPs. But Cursor, Copilot CLI, Codex, Gemini CLI, or a
+custom Agent-SDK program work the same way — the repo's committed artifacts
+are the only interface between passes, and the Playwright suite itself runs
+with no LLM at all.
