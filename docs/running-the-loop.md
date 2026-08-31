@@ -191,6 +191,10 @@ docs/spec.md, docs/running-the-loop.md). Manual fallback, same paths:
     uv run pytest -q && git add -A && git commit -m "sync framework from master"
     git checkout master
 
+The sync workflow is guarded to run only in the upstream testah repo — in a
+project created from the template it inherits harmlessly as a no-op (delete
+it there if you prefer a clean Actions list).
+
 Never checkout project-data paths (`targets.yaml`, `page-maps/`,
 `requirements/`, `tests/specs/`, `tests/pages/`, `tickets/`, `triage/`,
 `critiques/`, `reviews/`, `flake-history.json`, `changed-pages.json`,
