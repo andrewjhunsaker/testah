@@ -17,6 +17,10 @@ concurrency:
 
 jobs:
   sync:
+    # Only meaningful in the upstream testah repo. Projects created FROM the
+    # template inherit this file; the guard makes it a no-op there instead of
+    # a red run against a template branch they don't have.
+    if: github.repository == 'andrewjhunsaker/testah'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
