@@ -4,6 +4,18 @@ A multi-agent QA testing loop: agents map a target webapp, generate an
 agentless Playwright suite from the map, triage failures, and draft tickets —
 with a human approving every consequential step.
 
+## Quickstart
+
+```bash
+git clone --branch template --single-branch <this-repo> my-qa && cd my-qa
+bash setup.sh
+```
+
+One command, a few questions: connect a git remote (GitHub/GitLab/Bitbucket),
+install dependencies, point testah at your site, optionally connect Linear —
+then it prints the command menu. Every step is skippable and `setup.sh` is
+safe to re-run.
+
 - **Design:** [docs/spec.md](docs/spec.md)
 - **How to run each pass:** [docs/running-the-loop.md](docs/running-the-loop.md)
 - **Agents:** [agents/](agents/) — Scout · Author · Reviewer · Steward (+ Gauge, phase 2)
