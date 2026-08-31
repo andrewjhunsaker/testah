@@ -34,7 +34,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin master
           git checkout origin/master -- \
-            agents scripts .github .claude CLAUDE.md .mcp.json package.json \
+            agents scripts .github .claude CLAUDE.md setup.sh .mcp.json package.json \
             pnpm-lock.yaml pyproject.toml uv.lock RULES.md README.md \
             docs/spec.md docs/running-the-loop.md
           if git diff --cached --quiet; then

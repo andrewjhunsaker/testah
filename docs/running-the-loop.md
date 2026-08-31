@@ -105,6 +105,16 @@ lands in **one** end review. Live deviations, and what they cost:
 When the loop goes production, restore the gates in the order they appear in
 the table above — criteria first (done 2026-08-29).
 
+## Setup
+
+New project? `bash setup.sh` after cloning — an interactive wizard that
+connects a git remote (GitHub/GitLab/Bitbucket), installs the toolchain
+(pnpm + Playwright, uv + crawl4ai), writes your first target into
+`targets.yaml` (and the Playwright baseURL), optionally connects Linear
+(validates the API key against api.linear.app, stores it in the gitignored
+`.env`), and prints the command menu. Skippable per-step, safe to re-run;
+it refuses to clobber a customized `targets.yaml` without asking.
+
 ## The Claude Code harness
 
 Claude Code is the reference harness, and the repo ships a thin, committed
@@ -185,7 +195,7 @@ every push to `master` and checks out only framework paths onto `template`
 docs/spec.md, docs/running-the-loop.md). Manual fallback, same paths:
 
     git checkout template
-    git checkout master -- agents scripts .github .claude CLAUDE.md \
+    git checkout master -- agents scripts .github .claude CLAUDE.md setup.sh \
       .mcp.json package.json pnpm-lock.yaml pyproject.toml uv.lock RULES.md \
       README.md docs/spec.md docs/running-the-loop.md
     uv run pytest -q && git add -A && git commit -m "sync framework from master"
