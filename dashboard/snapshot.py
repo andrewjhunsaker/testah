@@ -14,7 +14,7 @@ import yaml
 
 REPORT_PATH = Path("reports/last-run.json")
 SOURCE_DIRECTORIES = (Path("tests"), Path("requirements"))
-SOURCE_FILES = (Path("targets.yaml"),)
+SOURCE_FILES = (Path("targets.yaml"), Path("playwright.config.ts"))
 
 
 def build_snapshot(root: Path, checked_at: datetime | None = None) -> dict[str, object]:

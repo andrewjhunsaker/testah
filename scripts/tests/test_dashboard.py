@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 from dashboard.server import make_server
-from dashboard.snapshot import build_snapshot, snapshot_version
+from dashboard.snapshot import snapshot_version
 
 
 COMPLETED_REPORT = {
@@ -58,6 +58,9 @@ def fixture_repository(
     (repo / "tests" / "specs" / "smoke.spec.ts").write_text(
         "test('smoke', () => {});\n", encoding="utf-8"
     )
+    playwright_config = repo / "playwright.config.ts"
+    if report_case == "older-than-playwright-config":
+        playwright_config.write_text("export default {};\n", encoding="utf-8")
     if with_report:
         (repo / "reports").mkdir()
         report_path = repo / "reports" / "last-run.json"
@@ -77,6 +80,9 @@ def fixture_repository(
                 source_path = repo / "tests" / "specs" / "smoke.spec.ts"
                 newer_time = report_path.stat().st_mtime + 1
                 os.utime(source_path, (newer_time, newer_time))
+            if report_case == "older-than-playwright-config":
+                newer_time = report_path.stat().st_mtime + 1
+                os.utime(playwright_config, (newer_time, newer_time))
     subprocess.run(["git", "init", "-b", "master"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "Fixture User"], cwd=repo, check=True)
     subprocess.run(
@@ -139,6 +145,7 @@ def test_current_snapshot_is_served_from_a_fixture_repository(tmp_path):
         ("incomplete", "incomplete"),
         ("malformed", "unavailable"),
         ("older-than-sources", "stale"),
+        ("older-than-playwright-config", "stale"),
         ("unattributed", "partial"),
     ],
 )
@@ -151,7 +158,8 @@ def test_snapshot_preserves_evidence_state(report_case, expected_state, tmp_path
         target_count=2 if report_case == "unattributed" else 1,
     )
 
-    target = build_snapshot(repo)["targets"][0]
+    with running_dashboard(repo) as base_url:
+        target = get_json(f"{base_url}/api/snapshot")["targets"][0]
 
     assert target["latest_run"]["state"] == expected_state
 
