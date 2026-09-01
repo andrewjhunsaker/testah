@@ -6,6 +6,7 @@ import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dashboard.snapshot import build_snapshot, snapshot_version
 
@@ -13,13 +14,21 @@ from dashboard.snapshot import build_snapshot, snapshot_version
 def make_server(root: Path, port: int = 0) -> ThreadingHTTPServer:
     """Create a loopback-only server scoped to one repository root."""
     repository_root = root.resolve()
+    ui_root = Path(__file__).parent / "ui"
 
     class DashboardHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            if self.path == "/api/snapshot":
+            path = urlparse(self.path).path
+            if path == "/api/snapshot":
                 self._send_json(build_snapshot(repository_root))
-            elif self.path == "/api/version":
+            elif path == "/api/version":
                 self._send_json({"version": snapshot_version(repository_root)})
+            elif path == "/":
+                self._send_file(ui_root / "index.html", "text/html; charset=utf-8")
+            elif path == "/styles.css":
+                self._send_file(ui_root / "styles.css", "text/css; charset=utf-8")
+            elif path == "/dist/app.js":
+                self._send_file(ui_root / "dist" / "app.js", "text/javascript; charset=utf-8")
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -39,6 +48,19 @@ def make_server(root: Path, port: int = 0) -> ThreadingHTTPServer:
             encoded = json.dumps(body, separators=(",", ":")).encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+
+        def _send_file(self, path: Path, content_type: str) -> None:
+            try:
+                encoded = path.read_bytes()
+            except OSError:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", content_type)
             self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(encoded)))
             self.end_headers()
