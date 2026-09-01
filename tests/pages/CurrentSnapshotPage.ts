@@ -27,6 +27,12 @@ export class CurrentSnapshotPage {
     return this.page.getByRole('heading', { name, level: 3 })
   }
 
+  targetCard(name: string): Locator {
+    return this.page.getByRole('article').filter({
+      has: this.targetHeading(name),
+    })
+  }
+
   count(value: number, label: string): Locator {
     // Run-count list items have no distinct accessible label, so their
     // rendered value is the narrowest operator-visible locator available.
@@ -38,9 +44,16 @@ export class CurrentSnapshotPage {
     return this.page.getByRole('definition').filter({ hasText: state })
   }
 
-  repositoryIdentity(pattern: RegExp): Locator {
-    // Repository identity is rendered as paragraph text without its own label.
-    return this.page.getByRole('paragraph').filter({ hasText: pattern })
+  latestRun(targetName: string, value: string): Locator {
+    return this.definitionField(this.targetCard(targetName), 'Latest run', value)
+  }
+
+  repositoryBranch(value: string): Locator {
+    return this.definitionField(this.repositorySection(), 'Branch', value)
+  }
+
+  repositoryCommit(value: string | RegExp): Locator {
+    return this.definitionField(this.repositorySection(), 'Commit', value)
   }
 
   lastChecked(): Locator {
@@ -71,5 +84,26 @@ export class CurrentSnapshotPage {
       })
       document.dispatchEvent(new Event('visibilitychange'))
     }, state)
+  }
+
+  private repositorySection(): Locator {
+    return this.page.getByRole('region', { name: 'Repository' })
+  }
+
+  private definitionField(
+    container: Locator,
+    label: string,
+    value: string | RegExp,
+  ): Locator {
+    // A definition list exposes dt/dd roles but no accessible association
+    // between each pair, so the following-sibling axis is the narrowest
+    // available handle after locating the visible term by role and text.
+    // `term` does not take an accessible name, so a role name option cannot
+    // address its visible label.
+    return container
+      .getByRole('term')
+      .filter({ hasText: label })
+      .locator('xpath=following-sibling::dd[1]')
+      .filter({ hasText: value })
   }
 }

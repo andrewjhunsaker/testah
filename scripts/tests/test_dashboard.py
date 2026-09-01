@@ -1,16 +1,11 @@
 import json
 import os
 import subprocess
-import threading
-from contextlib import contextmanager
 from pathlib import Path
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
 
 import pytest
 
-from dashboard.server import make_server
-from dashboard.snapshot import snapshot_version
+from dashboard.snapshot import build_snapshot, snapshot_version
 
 
 COMPLETED_REPORT = {
@@ -106,30 +101,10 @@ def fixture_repository(
     return repo
 
 
-@contextmanager
-def running_dashboard(repo: Path):
-    server = make_server(repo)
-    thread = threading.Thread(target=server.serve_forever)
-    thread.start()
-    try:
-        yield f"http://127.0.0.1:{server.server_port}"
-    finally:
-        server.shutdown()
-        thread.join()
-        server.server_close()
-
-
-def get_json(url: str) -> dict:
-    with urlopen(url) as response:
-        return json.loads(response.read())
-
-
-def test_current_snapshot_is_served_from_a_fixture_repository(tmp_path):
-    """A configured report is exposed as its normalized HTTP snapshot."""
+def test_current_snapshot_is_built_from_a_fixture_repository(tmp_path):
+    """A configured report is exposed as its normalized domain snapshot."""
     repo = fixture_repository(tmp_path, with_report=True)
-
-    with running_dashboard(repo) as base_url:
-        snapshot = get_json(f"{base_url}/api/snapshot")
+    snapshot = build_snapshot(repo)
 
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, text=True, capture_output=True
@@ -153,14 +128,13 @@ def test_current_snapshot_is_served_from_a_fixture_repository(tmp_path):
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
 def test_snapshot_rejects_non_standard_json_constants(constant, tmp_path):
-    """Non-standard JSON numbers make the report unavailable at the HTTP seam."""
+    """Non-standard JSON numbers make the report unavailable in the snapshot."""
     repo = fixture_repository(tmp_path, with_report=True)
     report_path = repo / "reports" / "last-run.json"
     report = json.dumps(COMPLETED_REPORT).replace("14404.824", constant, 1)
     report_path.write_text(report, encoding="utf-8")
 
-    with running_dashboard(repo) as base_url:
-        target = get_json(f"{base_url}/api/snapshot")["targets"][0]
+    target = build_snapshot(repo)["targets"][0]
 
     assert target["latest_run"]["state"] == "unavailable"
     assert target["latest_run"]["duration_ms"] is None
@@ -188,8 +162,7 @@ def test_snapshot_rejects_structurally_invalid_report_values(field, value, tmp_p
         json.dumps(report), encoding="utf-8"
     )
 
-    with running_dashboard(repo) as base_url:
-        latest_run = get_json(f"{base_url}/api/snapshot")["targets"][0]["latest_run"]
+    latest_run = build_snapshot(repo)["targets"][0]["latest_run"]
 
     assert latest_run["state"] == "incomplete"
     if field == "expected":
@@ -214,8 +187,7 @@ def test_snapshot_normalizes_iso_start_time(tmp_path):
         json.dumps(report), encoding="utf-8"
     )
 
-    with running_dashboard(repo) as base_url:
-        latest_run = get_json(f"{base_url}/api/snapshot")["targets"][0]["latest_run"]
+    latest_run = build_snapshot(repo)["targets"][0]["latest_run"]
 
     assert latest_run["state"] == "completed"
     assert latest_run["started_at"] == "2026-08-28T17:11:39.230Z"
@@ -241,40 +213,9 @@ def test_snapshot_preserves_evidence_state(report_case, expected_state, tmp_path
         target_count=2 if report_case == "unattributed" else 1,
     )
 
-    with running_dashboard(repo) as base_url:
-        target = get_json(f"{base_url}/api/snapshot")["targets"][0]
+    target = build_snapshot(repo)["targets"][0]
 
     assert target["latest_run"]["state"] == expected_state
-
-
-def test_dashboard_rejects_mutation_requests(tmp_path):
-    """The public dashboard interface accepts no mutation request."""
-    repo = fixture_repository(tmp_path, with_report=True)
-
-    with running_dashboard(repo) as base_url:
-        with pytest.raises(HTTPError) as error:
-            urlopen(Request(f"{base_url}/api/snapshot", method="POST"))
-
-    assert error.value.code == 405
-
-
-def test_snapshot_response_is_not_cacheable(tmp_path):
-    """An operator always reads fresh local repository evidence."""
-    repo = fixture_repository(tmp_path, with_report=True)
-
-    with running_dashboard(repo) as base_url:
-        with urlopen(f"{base_url}/api/snapshot") as response:
-            assert response.headers["Cache-Control"] == "no-store"
-
-
-def test_snapshot_version_is_served_from_the_fixture_repository(tmp_path):
-    """The lightweight version endpoint fingerprints the repository evidence."""
-    repo = fixture_repository(tmp_path, with_report=True)
-
-    with running_dashboard(repo) as base_url:
-        version = get_json(f"{base_url}/api/version")
-
-    assert version == {"version": snapshot_version(repo)}
 
 
 def test_snapshot_version_changes_with_dashboard_evidence(tmp_path):

@@ -1,5 +1,6 @@
 type LatestRun = {
   state: string;
+  started_at: string | null;
   counts: {
     passed: number | null;
     failed: number | null;
@@ -105,13 +106,13 @@ function showUnavailable(): void {
   loadError.textContent = "Current Snapshot is unavailable because the local dashboard interface could not be reached.";
   if (!hasSnapshot) {
     checkedAt.textContent = "Last checked: unavailable";
-    repositoryIdentity.textContent = "Repository identity unavailable";
+    renderRepositoryIdentity({ branch: null, commit: null });
   }
 }
 
 function render(snapshot: Snapshot): void {
   checkedAt.textContent = `Last checked: ${formatTime(snapshot.checked_at)}`;
-  repositoryIdentity.textContent = repositoryText(snapshot.repository);
+  renderRepositoryIdentity(snapshot.repository);
   targets.replaceChildren(...snapshot.targets.map(targetCard));
 }
 
@@ -140,7 +141,12 @@ function details(target: Target): HTMLDListElement {
     ["Environment", target.environment ?? "Unavailable"],
     ["Evidence State", evidenceState(target.latest_run.state)],
     ["Source freshness", sourceFreshness(target.latest_run.state)],
+    ["Latest run", formatOptionalTime(target.latest_run.started_at)],
   ];
+  return definitionList(fields);
+}
+
+function definitionList(fields: Array<[string, string]>): HTMLDListElement {
   const list = document.createElement("dl");
   for (const [label, value] of fields) {
     const term = document.createElement("dt");
@@ -161,9 +167,16 @@ function countEntries(counts: LatestRun["counts"]): Array<[string, number | null
   ];
 }
 
-function repositoryText(repository: Snapshot["repository"]): string {
-  if (!repository.branch || !repository.commit) return "Repository identity unavailable";
-  return `${repository.branch} · ${repository.commit.slice(0, 7)}`;
+function renderRepositoryIdentity(repository: Snapshot["repository"]): void {
+  repositoryIdentity.replaceChildren(
+    definitionList([
+      ["Branch", repository.branch ?? "Unavailable"],
+      [
+        "Commit",
+        repository.commit ? repository.commit.slice(0, 7) : "Unavailable",
+      ],
+    ]),
+  );
 }
 
 function evidenceState(state: string): string {
@@ -187,6 +200,10 @@ function sourceFreshness(state: string): string {
 function formatTime(value: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.valueOf()) ? "unavailable" : parsed.toLocaleString();
+}
+
+function formatOptionalTime(value: string | null): string {
+  return value ? formatTime(value) : "Unavailable";
 }
 
 function requiredElement(id: string): HTMLElement {

@@ -14,7 +14,9 @@ type RunningDashboard = {
   stop: () => Promise<void>
 }
 
-function createFixtureRepository(): string {
+function createFixtureRepository(
+  options: { secondTarget?: boolean } = {},
+): string {
   const root = mkdtempSync(join(tmpdir(), 'current-snapshot-'))
   writeFileSync(
     join(root, 'targets.yaml'),
@@ -24,6 +26,14 @@ function createFixtureRepository(): string {
       '    name: Vizaeo',
       '    base_url: https://vizaeo.example.test',
       '    environment: production',
+      ...(options.secondTarget
+        ? [
+            '  other:',
+            '    name: Other',
+            '    base_url: https://other.example.test',
+            '    environment: staging',
+          ]
+        : []),
       '',
     ].join('\n'),
   )
@@ -121,8 +131,47 @@ test('QA Operator can read the Current Snapshot', async ({ page }) => {
     await expect(snapshot.count(33, 'passed')).toBeVisible()
     await expect(snapshot.count(1, 'failed')).toBeVisible()
     await expect(snapshot.evidenceState('Completed')).toBeVisible()
-    await expect(snapshot.repositoryIdentity(/master · [0-9a-f]{7}/)).toBeVisible()
+    await expect(snapshot.repositoryBranch('master')).toBeVisible()
+    await expect(snapshot.repositoryCommit(/[0-9a-f]{7}/)).toBeVisible()
     await expect(snapshot.lastChecked()).toBeVisible()
+  } finally {
+    await cleanup(dashboard, fixtureRoot)
+  }
+})
+
+test('Overview labels latest run time for every target', async ({ page }) => {
+  const fixtureRoot = createFixtureRepository({ secondTarget: true })
+  const dashboard = launchDashboard(fixtureRoot)
+  const snapshot = new CurrentSnapshotPage(page)
+
+  try {
+    await snapshot.goto(await dashboard.url)
+
+    const expectedStartedAt = await page.evaluate(() =>
+      new Date('2026-09-01T12:00:00.000Z').toLocaleString(),
+    )
+    await expect(snapshot.latestRun('Vizaeo', expectedStartedAt)).toBeVisible()
+    await expect(snapshot.latestRun('Other', 'Unavailable')).toBeVisible()
+  } finally {
+    await cleanup(dashboard, fixtureRoot)
+  }
+})
+
+test('Overview preserves available repository identity fields', async ({ page }) => {
+  const fixtureRoot = createFixtureRepository()
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: fixtureRoot,
+    encoding: 'utf8',
+  }).trim()
+  execFileSync('git', ['checkout', '--quiet', '--detach'], { cwd: fixtureRoot })
+  const dashboard = launchDashboard(fixtureRoot)
+  const snapshot = new CurrentSnapshotPage(page)
+
+  try {
+    await snapshot.goto(await dashboard.url)
+
+    await expect(snapshot.repositoryBranch('Unavailable')).toBeVisible()
+    await expect(snapshot.repositoryCommit(commit.slice(0, 7))).toBeVisible()
   } finally {
     await cleanup(dashboard, fixtureRoot)
   }

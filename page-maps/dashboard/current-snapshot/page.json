@@ -1,0 +1,58 @@
+{
+  "url": "http://127.0.0.1:<port>/",
+  "final_url": "http://127.0.0.1:<port>/",
+  "status_code": 200,
+  "title": "Current Snapshot",
+  "headings": [
+    {
+      "level": 1,
+      "text": "Current Snapshot"
+    },
+    {
+      "level": 2,
+      "text": "Repository"
+    },
+    {
+      "level": 2,
+      "text": "Targets"
+    },
+    {
+      "level": 3,
+      "text": "<target name>"
+    }
+  ],
+  "nav": [],
+  "links": [],
+  "buttons": [],
+  "forms": [],
+  "elements": [
+    {
+      "text": "Last checked: <human-readable timestamp>",
+      "selector": "[id=\"checked-at\"]"
+    },
+    {
+      "text": "Branch / <branch or Unavailable>",
+      "selector": "[id=\"repository-identity\"]"
+    },
+    {
+      "text": "Commit / <short commit or Unavailable>",
+      "selector": "[id=\"repository-identity\"]"
+    },
+    {
+      "text": "<target name> target card",
+      "selector": "[id=\"targets\"] article"
+    },
+    {
+      "text": "Latest run / <human-readable timestamp or Unavailable>",
+      "selector": "[id=\"targets\"] article dl"
+    },
+    {
+      "text": "<count> <passed|failed|flaky|skipped>",
+      "selector": "[id=\"targets\"] article li"
+    },
+    {
+      "text": "Current Snapshot is unavailable because the local dashboard interface could not be reached.",
+      "selector": "[id=\"load-error\"]"
+    }
+  ]
+}
