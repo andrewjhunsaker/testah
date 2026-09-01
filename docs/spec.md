@@ -1,5 +1,10 @@
-# testah — QA Testing Loop Agent Instruction File (v0.6)
+# testah — QA Testing Loop Agent Instruction File (v1.0)
 
+> v1.0 (2026-08-31): declared production-ready for the designed mode —
+> supervised, single-target, human-gated operation (see README "Status and
+> scope" for the honest boundary + roadmap). One-command onboarding
+> (`setup.sh`) shipped; README rewritten as the public face.
+>
 > v0.6.1 (2026-08-30): Claude Code harness formalized and committed —
 > CLAUDE.md, `.claude/` (slash commands per pass, tool-restricted `reviewer`
 > agent type, ask-gates on human-owned law files, pytest tripwire hook);
