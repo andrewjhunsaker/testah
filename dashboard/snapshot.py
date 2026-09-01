@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -103,8 +104,11 @@ def _read_report(path: Path) -> tuple[str, dict[str, Any] | None]:
     if not path.exists():
         return "never-run", None
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        report = json.loads(
+            path.read_text(encoding="utf-8"),
+            parse_constant=_reject_json_constant,
+        )
+    except (OSError, json.JSONDecodeError, ValueError):
         return "unavailable", None
     if not isinstance(report, dict) or not _has_complete_stats(report):
         return "incomplete", report if isinstance(report, dict) else None
@@ -115,10 +119,18 @@ def _has_complete_stats(report: dict[str, Any]) -> bool:
     stats = report.get("stats")
     if not isinstance(stats, dict):
         return False
-    return all(
-        isinstance(stats.get(key), (int, float)) and not isinstance(stats.get(key), bool)
-        for key in ("expected", "unexpected", "flaky", "skipped", "duration")
-    ) and isinstance(stats.get("startTime"), str)
+    return (
+        all(
+            _is_count(stats.get(key))
+            for key in ("expected", "unexpected", "flaky", "skipped")
+        )
+        and _is_duration(stats.get("duration"))
+        and _parse_iso_timestamp(stats.get("startTime")) is not None
+    )
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"Non-standard JSON constant: {value}")
 
 
 def _attributed_target(
@@ -166,21 +178,53 @@ def _latest_run(report: dict[str, Any] | None, state: str) -> dict[str, object]:
             "duration_ms": None,
             "counts": None,
         }
+    started_at = _parse_iso_timestamp(stats.get("startTime"))
     return {
         "state": state,
-        "started_at": stats.get("startTime") if isinstance(stats.get("startTime"), str) else None,
-        "duration_ms": stats.get("duration") if _is_number(stats.get("duration")) else None,
+        "started_at": (
+            _iso_timestamp(started_at, timespec="milliseconds") if started_at else None
+        ),
+        "duration_ms": (
+            stats.get("duration") if _is_duration(stats.get("duration")) else None
+        ),
         "counts": {
-            "passed": stats.get("expected") if _is_number(stats.get("expected")) else None,
-            "failed": stats.get("unexpected") if _is_number(stats.get("unexpected")) else None,
-            "flaky": stats.get("flaky") if _is_number(stats.get("flaky")) else None,
-            "skipped": stats.get("skipped") if _is_number(stats.get("skipped")) else None,
+            "passed": (
+                stats.get("expected") if _is_count(stats.get("expected")) else None
+            ),
+            "failed": (
+                stats.get("unexpected")
+                if _is_count(stats.get("unexpected"))
+                else None
+            ),
+            "flaky": stats.get("flaky") if _is_count(stats.get("flaky")) else None,
+            "skipped": (
+                stats.get("skipped") if _is_count(stats.get("skipped")) else None
+            ),
         },
     }
 
 
-def _is_number(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+def _is_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _is_duration(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value >= 0
+    )
+
+
+def _parse_iso_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or "T" not in value:
+        return None
+    normalized = f"{value[:-1]}+00:00" if value.endswith("Z") else value
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
 
 
 def _sources_are_newer(root: Path, report_path: Path) -> bool:
@@ -249,7 +293,11 @@ def _git(root: Path, *args: str) -> str | None:
     return value or None
 
 
-def _iso_timestamp(value: datetime) -> str:
+def _iso_timestamp(value: datetime, *, timespec: str = "auto") -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return (
+        value.astimezone(timezone.utc)
+        .isoformat(timespec=timespec)
+        .replace("+00:00", "Z")
+    )

@@ -45,7 +45,9 @@ def make_server(root: Path, port: int = 0) -> ThreadingHTTPServer:
             self._method_not_allowed()
 
         def _send_json(self, body: dict[str, object]) -> None:
-            encoded = json.dumps(body, separators=(",", ":")).encode("utf-8")
+            encoded = json.dumps(
+                body, separators=(",", ":"), allow_nan=False
+            ).encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/json")
             self.send_header("Cache-Control", "no-store")

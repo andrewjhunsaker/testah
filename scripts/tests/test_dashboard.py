@@ -151,6 +151,76 @@ def test_current_snapshot_is_served_from_a_fixture_repository(tmp_path):
     ]
 
 
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_snapshot_rejects_non_standard_json_constants(constant, tmp_path):
+    """Non-standard JSON numbers make the report unavailable at the HTTP seam."""
+    repo = fixture_repository(tmp_path, with_report=True)
+    report_path = repo / "reports" / "last-run.json"
+    report = json.dumps(COMPLETED_REPORT).replace("14404.824", constant, 1)
+    report_path.write_text(report, encoding="utf-8")
+
+    with running_dashboard(repo) as base_url:
+        target = get_json(f"{base_url}/api/snapshot")["targets"][0]
+
+    assert target["latest_run"]["state"] == "unavailable"
+    assert target["latest_run"]["duration_ms"] is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("expected", True),
+        ("expected", -1),
+        ("expected", 1.5),
+        ("duration", True),
+        ("duration", -1),
+        ("startTime", "not-a-timestamp"),
+    ],
+)
+def test_snapshot_rejects_structurally_invalid_report_values(field, value, tmp_path):
+    """Invalid count, duration, and timestamp values stay incomplete, not healthy."""
+    repo = fixture_repository(tmp_path, with_report=True)
+    report = {
+        **COMPLETED_REPORT,
+        "stats": {**COMPLETED_REPORT["stats"], field: value},
+    }
+    (repo / "reports" / "last-run.json").write_text(
+        json.dumps(report), encoding="utf-8"
+    )
+
+    with running_dashboard(repo) as base_url:
+        latest_run = get_json(f"{base_url}/api/snapshot")["targets"][0]["latest_run"]
+
+    assert latest_run["state"] == "incomplete"
+    if field == "expected":
+        assert latest_run["counts"]["passed"] is None
+    elif field == "duration":
+        assert latest_run["duration_ms"] is None
+    else:
+        assert latest_run["started_at"] is None
+
+
+def test_snapshot_normalizes_iso_start_time(tmp_path):
+    """A valid report timestamp is returned as a normalized UTC ISO timestamp."""
+    repo = fixture_repository(tmp_path, with_report=True)
+    report = {
+        **COMPLETED_REPORT,
+        "stats": {
+            **COMPLETED_REPORT["stats"],
+            "startTime": "2026-08-28T19:11:39.230+02:00",
+        },
+    }
+    (repo / "reports" / "last-run.json").write_text(
+        json.dumps(report), encoding="utf-8"
+    )
+
+    with running_dashboard(repo) as base_url:
+        latest_run = get_json(f"{base_url}/api/snapshot")["targets"][0]["latest_run"]
+
+    assert latest_run["state"] == "completed"
+    assert latest_run["started_at"] == "2026-08-28T17:11:39.230Z"
+
+
 @pytest.mark.parametrize(
     ("report_case", "expected_state"),
     [
