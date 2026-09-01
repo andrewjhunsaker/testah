@@ -24,21 +24,86 @@ type Snapshot = {
   targets: Target[];
 };
 
+type SnapshotVersion = {
+  version: string;
+};
+
 const checkedAt = requiredElement("checked-at");
 const repositoryIdentity = requiredElement("repository-identity");
 const targets = requiredElement("targets");
 const loadError = requiredElement("load-error");
+let currentVersion: string | null = null;
+let refreshInFlight = false;
+let pollingTimer: number | undefined;
+let hasSnapshot = false;
 
-void renderSnapshot();
+void initialize();
 
-async function renderSnapshot(): Promise<void> {
+async function initialize(): Promise<void> {
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  await refreshWhenChanged();
+  startPolling();
+}
+
+function onVisibilityChange(): void {
+  if (document.visibilityState === "visible") {
+    void refreshWhenChanged();
+    startPolling();
+  } else {
+    stopPolling();
+  }
+}
+
+function startPolling(): void {
+  if (document.visibilityState !== "visible" || pollingTimer !== undefined) return;
+  pollingTimer = window.setInterval(() => void refreshWhenChanged(), 2_000);
+}
+
+function stopPolling(): void {
+  if (pollingTimer === undefined) return;
+  window.clearInterval(pollingTimer);
+  pollingTimer = undefined;
+}
+
+async function refreshWhenChanged(): Promise<void> {
+  if (document.visibilityState !== "visible" || refreshInFlight) return;
+  refreshInFlight = true;
+  try {
+    const version = await fetchVersion();
+    if (version !== currentVersion && await renderSnapshot()) currentVersion = version;
+  } catch {
+    showUnavailable();
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+async function fetchVersion(): Promise<string> {
+  const response = await fetch("/api/version", { cache: "no-store" });
+  if (!response.ok) throw new Error(`Version request failed (${response.status})`);
+  const body = await response.json() as SnapshotVersion;
+  if (typeof body.version !== "string") throw new Error("Version response is invalid");
+  return body.version;
+}
+
+async function renderSnapshot(): Promise<boolean> {
   try {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
     if (!response.ok) throw new Error(`Snapshot request failed (${response.status})`);
     render(await response.json() as Snapshot);
+    hasSnapshot = true;
+    loadError.hidden = true;
+    return true;
   } catch {
-    loadError.hidden = false;
-    loadError.textContent = "Current Snapshot is unavailable because the local dashboard interface could not be reached.";
+    showUnavailable();
+    return false;
+  }
+}
+
+function showUnavailable(): void {
+  loadError.hidden = false;
+  loadError.textContent = "Current Snapshot is unavailable because the local dashboard interface could not be reached.";
+  if (!hasSnapshot) {
     checkedAt.textContent = "Last checked: unavailable";
     repositoryIdentity.textContent = "Repository identity unavailable";
   }

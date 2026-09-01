@@ -53,13 +53,15 @@ def build_snapshot(root: Path, checked_at: datetime | None = None) -> dict[str, 
 
 
 def snapshot_version(root: Path) -> str:
-    """Return a content fingerprint for repository evidence used by the snapshot."""
+    """Return a cheap metadata fingerprint for repository evidence used by the snapshot."""
     root = root.resolve()
     digest = hashlib.sha256()
-    for path in _evidence_paths(root):
-        digest.update(str(path.relative_to(root)).encode("utf-8"))
+    for relative_path, size, modified_at in _evidence_fingerprint_entries(root):
+        digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        digest.update(str(size).encode("ascii"))
+        digest.update(b"\0")
+        digest.update(str(modified_at).encode("ascii"))
         digest.update(b"\0")
     identity = _repository_identity(root)
     digest.update(json.dumps(identity, sort_keys=True).encode("utf-8"))
@@ -198,12 +200,31 @@ def _source_paths(root: Path) -> list[Path]:
     return paths
 
 
-def _evidence_paths(root: Path) -> list[Path]:
-    paths = _source_paths(root)
-    report_path = root / REPORT_PATH
-    if report_path.is_file():
-        paths.append(report_path)
-    return sorted(paths)
+def _evidence_fingerprint_entries(root: Path) -> list[tuple[str, int | None, int | None]]:
+    paths = [*SOURCE_FILES, REPORT_PATH]
+    entries = [_fingerprint_entry(root, path) for path in paths]
+    for directory in SOURCE_DIRECTORIES:
+        source_root = root / directory
+        if not source_root.is_dir():
+            entries.append((f"{directory}/", None, None))
+            continue
+        entries.extend(
+            _fingerprint_entry(root, path.relative_to(root))
+            for path in source_root.rglob("*")
+            if path.is_file()
+        )
+    return sorted(entries)
+
+
+def _fingerprint_entry(root: Path, relative_path: Path) -> tuple[str, int | None, int | None]:
+    path = root / relative_path
+    try:
+        status = path.stat()
+    except OSError:
+        return (str(relative_path), None, None)
+    if not path.is_file():
+        return (str(relative_path), None, None)
+    return (str(relative_path), status.st_size, status.st_mtime_ns)
 
 
 def _repository_identity(root: Path) -> dict[str, str | None]:

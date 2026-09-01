@@ -30,6 +30,19 @@ COMPLETED_REPORT = {
 }
 
 
+def write_completed_report(repo: Path, *, passed: int, failed: int) -> None:
+    """Replace fixture report counts with complete dashboard evidence."""
+    report = {
+        **COMPLETED_REPORT,
+        "stats": {
+            **COMPLETED_REPORT["stats"],
+            "expected": passed,
+            "unexpected": failed,
+        },
+    }
+    (repo / "reports" / "last-run.json").write_text(json.dumps(report), encoding="utf-8")
+
+
 def fixture_repository(
     tmp_path: Path,
     *,
@@ -192,3 +205,13 @@ def test_snapshot_version_is_served_from_the_fixture_repository(tmp_path):
         version = get_json(f"{base_url}/api/version")
 
     assert version == {"version": snapshot_version(repo)}
+
+
+def test_snapshot_version_changes_with_dashboard_evidence(tmp_path):
+    """A report rewrite changes the version that drives client refreshes."""
+    repo = fixture_repository(tmp_path, with_report=True)
+    before = snapshot_version(repo)
+
+    write_completed_report(repo, passed=32, failed=2)
+
+    assert snapshot_version(repo) != before

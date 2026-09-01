@@ -64,6 +64,23 @@ function launchDashboard(root: string): RunningDashboard {
   return { process: child, url };
 }
 
+function writeCompletedReport(root: string, counts: { passed: number; failed: number }): void {
+  writeFileSync(
+    join(root, "reports", "last-run.json"),
+    JSON.stringify({
+      stats: {
+        expected: counts.passed,
+        unexpected: counts.failed,
+        flaky: 0,
+        skipped: 0,
+        duration: 1250,
+        startTime: "2026-09-01T12:00:00.000Z",
+      },
+      config: { use: { baseURL: "https://vizaeo.example.test" } },
+    }),
+  );
+}
+
 test("QA Operator can read the Current Snapshot", async ({ page }) => {
   const fixtureRoot = createFixtureRepository();
   const dashboard = launchDashboard(fixtureRoot);
@@ -79,6 +96,25 @@ test("QA Operator can read the Current Snapshot", async ({ page }) => {
     await expect(page.getByText("Completed", { exact: true })).toBeVisible();
     await expect(page.getByText(/master · [0-9a-f]{7}/)).toBeVisible();
     await expect(page.getByText("Last checked", { exact: false })).toBeVisible();
+  } finally {
+    dashboard.process.kill("SIGINT");
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("Overview refreshes when repository evidence changes", async ({ page }) => {
+  const fixtureRoot = createFixtureRepository();
+  const dashboard = launchDashboard(fixtureRoot);
+
+  try {
+    const dashboardUrl = await dashboard.url;
+    await page.goto(dashboardUrl);
+    await expect(page.getByText("33 passed")).toBeVisible();
+
+    writeCompletedReport(fixtureRoot, { passed: 32, failed: 2 });
+
+    await expect(page.getByText("32 passed")).toBeVisible();
+    await expect(page.getByText("2 failed")).toBeVisible();
   } finally {
     dashboard.process.kill("SIGINT");
     rmSync(fixtureRoot, { recursive: true, force: true });
