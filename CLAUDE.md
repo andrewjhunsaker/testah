@@ -29,3 +29,17 @@ the message bus; the human gates every consequential step.
 - Operating procedure + gates: `docs/running-the-loop.md`. Design:
   `docs/spec.md`. Testing law: `RULES.md`. Designated targets:
   `targets.yaml`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues for `andrewjhunsaker/testah`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the five default canonical labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain documentation uses a single-context layout. See `docs/agents/domain.md`.
