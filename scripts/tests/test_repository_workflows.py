@@ -206,6 +206,14 @@ def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path)
     setup = (ROOT / "setup.sh").read_text()
     assert "Use this as the project remote?" in setup
     assert "git remote set-url origin" in setup
+    assert "[github/skip]" in setup
+    for project_setup_document in (
+        setup,
+        (ROOT / "README.md").read_text(),
+        (ROOT / "docs/running-the-loop.md").read_text(),
+    ):
+        assert "gitlab" not in project_setup_document.lower()
+        assert "bitbucket" not in project_setup_document.lower()
 
 
 def test_release_branch_bootstrap_refuses_to_create_master(tmp_path):

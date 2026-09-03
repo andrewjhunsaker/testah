@@ -43,7 +43,7 @@ if git remote get-url origin >/dev/null 2>&1; then
   fi
 else
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)
-  read -r -p "  Connect a remote? [github/gitlab/bitbucket/skip] " prov
+  read -r -p "  Connect a remote? [github/skip] " prov
   case "$prov" in
     github)
       if have gh; then
@@ -56,19 +56,6 @@ else
         git remote add origin "$url" && git push -u origin "$branch" \
           && remote_ready=y
       fi ;;
-    gitlab)
-      if have glab; then
-        glab repo create --private && git push -u origin "$branch" \
-          && remote_ready=y
-      else
-        read -r -p "  Remote URL (git@gitlab.com:you/repo.git): " url
-        git remote add origin "$url" && git push -u origin "$branch" \
-          && remote_ready=y
-      fi ;;
-    bitbucket)
-      read -r -p "  Remote URL (git@bitbucket.org:you/repo.git): " url
-      git remote add origin "$url" && git push -u origin "$branch" \
-        && remote_ready=y ;;
     *) note "skipped — later: git remote add origin <url> && git push -u origin $branch" ;;
   esac
 fi

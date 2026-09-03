@@ -59,7 +59,7 @@ so any stage can be re-run and git history is the audit log.
   pytest tripwire. Other LLM harnesses use `agents/*.md` directly.
 - **Tested substrate** — the deterministic core (crawler, drift, flake
   tracker, coverage maps, ticket filer) is plain Python with a fast pytest
-  suite; CI runs it alongside the e2e suite on every push.
+  suite; CI runs it alongside the e2e suite on feature PRs into `staging`.
 
 ## Quickstart
 
@@ -68,10 +68,11 @@ git clone --branch template --single-branch <this-repo> my-qa && cd my-qa
 bash setup.sh
 ```
 
-One command, a few questions: connect a git remote (GitHub/GitLab/Bitbucket),
-install dependencies, point testah at your site, optionally connect Linear —
-then it prints the command menu. The `template` branch is the clean starter;
-`master` carries this repo's own working artifacts.
+One command, a few questions: connect a GitHub project remote, install
+dependencies, point testah at your site, optionally connect Linear — then it
+prints the command menu. GitHub is currently required for the protected PR,
+Actions, Codex review, and issue workflow. The `template` branch is the clean
+starter; `master` carries this repo's own working artifacts.
 
 - **Design:** [docs/spec.md](docs/spec.md)
 - **How to run each pass:** [docs/running-the-loop.md](docs/running-the-loop.md)
