@@ -2,8 +2,8 @@ from scripts.file_tickets import fileable, parse_draft, stamp_filed
 
 DRAFT = """---
 type: product-bug
-target: vizaeo
-source: page-maps/vizaeo/help
+target: example
+source: page-maps/example/help
 status: draft
 ---
 # Fix the thing

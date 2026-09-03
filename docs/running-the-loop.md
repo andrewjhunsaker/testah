@@ -51,9 +51,17 @@ results in the last 10 runs**; silence means no crossing. It is idempotent —
 reprocessing the same report under the same run-id does not double-count.
 
 CI is `.github/workflows/tests.yml`: `scripts-unit` (pytest) and `e2e`
-(Playwright, chromium), on push to `master` and on every PR. `e2e` uploads
-`reports/` as the `playwright-report` artifact even on failure — that artifact
-is Mode B's input.
+(Playwright, chromium), on pushes to `staging` and `master` and on every PR.
+When the generic dashboard is present, the separate `dashboard` job runs its
+typecheck and loopback-browser suite. `e2e` uploads `reports/` as the
+`playwright-report` artifact even on failure — that artifact is Mode B's input.
+
+## Staging promotion
+
+Feature and framework PRs land on `staging` first. After the combined branch is
+green and has been exercised locally, promote it with a PR from `staging` to
+`master`; the human remains the merge gate. A push to `master` is therefore a
+validated release event and triggers the project-data-free `template` sync.
 
 ## Gates in PRODUCTION mode
 
@@ -70,8 +78,8 @@ Per [spec.md §11](spec.md). Each is a human stop, not a notification:
 Tickets file to whatever the top-level `tracker:` block in `targets.yaml`
 configures (testah is tracker-agnostic; Linear via MCP is the reference
 implementation) — including product bugs found in targets. A target with
-`ticketing: direct` skips the draft step and files immediately; `vizaeo` is
-`draft`.
+`ticketing: direct` skips the draft step and files immediately; the example
+configuration uses `draft`.
 
 Agents never edit `RULES.md` or `targets.yaml`. Both are human-owned law.
 
@@ -96,9 +104,10 @@ lands in **one** end review. Live deviations, and what they cost:
   here on.
 - **The seed failure was deleted 2026-08-29** after triage proved the path;
   the suite is fully green.
-- **Suite runs against live staging.** `playwright.config.ts` defaults
-  `baseURL` to `https://staging.vizaeo.com` and CI passes no env or secrets. It
-  works today because every spec is anonymous and read-only; the first
+- **Suite runs against live staging.** `playwright.config.ts` supplies the
+  repository's example base URL unless `TESTAH_BASE_URL` overrides it. CI
+  passes no env or secrets. It works today because every spec is anonymous
+  and read-only; the first
   authenticated role needs a `*.setup.ts` project and a secrets path that does
   not exist yet (`tests/fixtures/` is empty).
 
@@ -160,7 +169,7 @@ README "Running the agents on your LLM platform").
 files per target in `targets.yaml`:
 
 - **`docs/coverage/<target>.html` — the real map.** Open it in a browser
-  (`open docs/coverage/vizaeo.html`). One section per designated page, one
+  (`open docs/coverage/example.html`). One section per designated page, one
   card per feature, and inside each card the ACTUAL tests that implement it
   (the individual test titles from the last run, each with its own status
   dot). The card's accent says where the feature stands: green passing, red
@@ -191,13 +200,14 @@ flake-history. New adopters clone it and point `targets.yaml` at their app.
 
 Maintenance is AUTOMATED: `.github/workflows/template-sync.yml` runs on
 every push to `master` and checks out only framework paths onto `template`
-(agents, scripts, .github, .mcp.json, package/lock files, RULES.md, README,
-docs/spec.md, docs/running-the-loop.md). Manual fallback, same paths:
+(agents, scripts, dashboard, .github, .mcp.json, package/lock files, RULES.md,
+README, `docs/spec.md`, `docs/running-the-loop.md`, and the dashboard's exact
+POM/requirement/page map).
+Manual fallback, same paths after the dashboard exists:
 
     git checkout template
-    git checkout master -- agents scripts .github .claude CLAUDE.md setup.sh \
-      .mcp.json package.json pnpm-lock.yaml pyproject.toml uv.lock RULES.md \
-      README.md docs/spec.md docs/running-the-loop.md
+    git checkout master -- scripts/sync_template_paths.sh
+    bash scripts/sync_template_paths.sh master
     uv run pytest -q && git add -A && git commit -m "sync framework from master"
     git checkout master
 
@@ -205,8 +215,9 @@ The sync workflow is guarded to run only in the upstream testah repo — in a
 project created from the template it inherits harmlessly as a no-op (delete
 it there if you prefer a clean Actions list).
 
-Never checkout project-data paths (`targets.yaml`, `page-maps/`,
+Never broadly checkout project-data paths (`targets.yaml`, `page-maps/`,
 `requirements/`, `tests/specs/`, `tests/pages/`, `tickets/`, `triage/`,
 `critiques/`, `reviews/`, `flake-history.json`, `changed-pages.json`,
 `docs/plans/`, `docs/review-packet-*`, `docs/coverage/`) onto
-`template`.
+`template`. Only the exact dashboard support files listed above are exceptions;
+all target-specific artifacts remain excluded.
