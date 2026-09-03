@@ -22,9 +22,9 @@ function createFixtureRepository(
     join(root, 'targets.yaml'),
     [
       'targets:',
-      '  vizaeo:',
-      '    name: Vizaeo',
-      '    base_url: https://vizaeo.example.test',
+      '  example:',
+      '    name: Example target',
+      '    base_url: https://app.example.test',
       '    environment: production',
       ...(options.secondTarget
         ? [
@@ -105,7 +105,7 @@ function writeCompletedReport(
         duration: 1250,
         startTime: '2026-09-01T12:00:00.000Z',
       },
-      config: { use: { baseURL: 'https://vizaeo.example.test' } },
+      config: { use: { baseURL: 'https://app.example.test' } },
     }),
   )
 }
@@ -127,7 +127,7 @@ test('QA Operator can read the Current Snapshot', async ({ page }) => {
     await snapshot.goto(await dashboard.url)
 
     await expect(snapshot.heading).toBeVisible()
-    await expect(snapshot.targetHeading('Vizaeo')).toBeVisible()
+    await expect(snapshot.targetHeading('Example target')).toBeVisible()
     await expect(snapshot.count(33, 'passed')).toBeVisible()
     await expect(snapshot.count(1, 'failed')).toBeVisible()
     await expect(snapshot.evidenceState('Completed')).toBeVisible()
@@ -150,7 +150,7 @@ test('Overview labels latest run time for every target', async ({ page }) => {
     const expectedStartedAt = await page.evaluate(() =>
       new Date('2026-09-01T12:00:00.000Z').toLocaleString(),
     )
-    await expect(snapshot.latestRun('Vizaeo', expectedStartedAt)).toBeVisible()
+    await expect(snapshot.latestRun('Example target', expectedStartedAt)).toBeVisible()
     await expect(snapshot.latestRun('Other', 'Unavailable')).toBeVisible()
   } finally {
     await cleanup(dashboard, fixtureRoot)
