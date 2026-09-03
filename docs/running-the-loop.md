@@ -65,11 +65,16 @@ pass, request `@codex review`; address consequential findings and request a
 follow-up review when they require a new commit. The agent may merge the PR into
 `staging` only after the current commit is clean.
 
-After the combined branch has been exercised locally, open a promotion PR from
-`staging` to `master` and stop. GitHub branch protection rejects direct pushes
-to `master`, including administrator pushes, and requires the PR path. A human
-must inspect and merge this promotion PR. It does not rerun CI or request
-another Codex review: those gates already ran on the constituent staging PRs.
+Each merge to `staging` makes `.github/workflows/promotion-pr.yml` open a
+bot-authored draft promotion PR to `master`, or leave the existing one tracking
+the latest staging commit. After the combined branch has been exercised
+locally, an agent may mark that draft ready and must stop. GitHub branch
+protection rejects direct pushes to `master`, including administrator pushes,
+and requires one approval. Because the PR author is `github-actions[bot]`, the
+human owner can approve it; an agent operating as that owner cannot substitute
+an unreviewed self-authored promotion. The promotion does not rerun CI or
+request another Codex review: those gates already ran on the constituent
+staging PRs.
 
 The merge to `master` is the validated release event. It triggers the
 project-data-free `template` sync; that workflow copies only the exact paths in
@@ -133,6 +138,7 @@ verifies or replaces the existing `origin` (important when cloning the upstream
 human-initialized remote `master`; and creates only `staging` from that branch
 when needed. When replacing `origin`, setup first pushes the allowed `template`
 branch so the human can create `master` from the same history in GitHub. It
+refuses to create or replace a remote from any other checked-out branch, and it
 never creates or pushes `master`. GitHub is required for the current PR
 protections, Actions checks, Codex review, and issue workflow. The wizard then
 provisions the canonical GitHub triage labels and branch protections

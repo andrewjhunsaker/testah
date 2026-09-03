@@ -11,8 +11,9 @@ These rules apply to every agent and automation working in this repository.
   CI passes. Address consequential findings and request a follow-up review only
   when the reviewed commit must change. Merge only after the current commit is
   clean.
-- When `staging` is ready to release, open a promotion PR from `staging` into
-  `master` and stop. A human must inspect and merge that PR.
+- Each merge to `staging` makes GitHub Actions open or update a bot-authored
+  draft promotion PR into `master`. After local validation, an agent may mark
+  that PR ready and must stop. A human must approve and merge it.
 - Do not rerun CI or request another Codex review on the promotion PR. Its
   contents were already gated on their staging PRs.
 - A merge to `master` is the release event. Let the template-sync workflow copy

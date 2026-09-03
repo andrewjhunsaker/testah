@@ -20,6 +20,20 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "dashboard config was removed" in workflow
 
 
+def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
+    workflow = (ROOT / ".github/workflows/promotion-pr.yml").read_text()
+
+    assert "push:\n    branches: [staging]" in workflow
+    assert "pull-requests: write" in workflow
+    assert "gh pr create" in workflow
+    assert "--base master" in workflow
+    assert "--head staging" in workflow
+    assert "--draft" in workflow
+    assert "@codex review" not in workflow
+    assert "pytest" not in workflow
+    assert "playwright" not in workflow
+
+
 def test_template_sync_uses_a_versioned_exact_file_manifest():
     workflow = (ROOT / ".github/workflows/template-sync.yml").read_text()
     sync_script = (ROOT / "scripts/sync_template_paths.sh").read_text()
@@ -34,6 +48,7 @@ def test_template_sync_uses_a_versioned_exact_file_manifest():
         "docs/agents/issue-tracker.md",
         "docs/agents/triage-labels.md",
         "docs/agents/domain.md",
+        ".github/workflows/promotion-pr.yml",
         "scripts/bootstrap_github_labels.sh",
         "scripts/bootstrap_github_protections.sh",
         "scripts/bootstrap_release_branches.sh",
@@ -218,6 +233,8 @@ def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path)
         in normalized_setup
     )
     assert "[github/skip]" in setup
+    assert setup.count('[ "$branch" != template ]') == 2
+    assert "Refusing to create a remote from $branch" in setup
     for project_setup_document in (
         setup,
         (ROOT / "README.md").read_text(),
@@ -306,6 +323,9 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     assert "branches/master/protection" in protection_bootstrap
     assert '"contexts":["scripts-unit","e2e","dashboard"]' in protection_bootstrap
     assert '"required_status_checks":null' in protection_bootstrap
+    assert '"required_approving_review_count":1' in protection_bootstrap
+    assert "actions/permissions/workflow" in protection_bootstrap
+    assert '"can_approve_pull_request_reviews":true' in protection_bootstrap
     assert protection_bootstrap.count('"enforce_admins":true') == 2
     assert protection_bootstrap.count('"required_linear_history":true') == 2
     assert protection_bootstrap.count('"required_conversation_resolution":true') == 2
@@ -334,21 +354,32 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     )
 
     calls = protection_log.read_text().splitlines()
-    assert len(calls) == 2
+    assert len(calls) == 3
     staging_args, staging_payload_text = calls[0].split("|", 1)
     master_args, master_payload_text = calls[1].split("|", 1)
+    actions_args, actions_payload_text = calls[2].split("|", 1)
     assert "--method PUT" in staging_args
     assert "branches/staging/protection" in staging_args
     assert "--method PUT" in master_args
     assert "branches/master/protection" in master_args
+    assert "--method PUT" in actions_args
+    assert "actions/permissions/workflow" in actions_args
     staging_payload = json.loads(staging_payload_text)
     master_payload = json.loads(master_payload_text)
+    actions_payload = json.loads(actions_payload_text)
     assert staging_payload["required_status_checks"]["contexts"] == [
         "scripts-unit",
         "e2e",
         "dashboard",
     ]
     assert master_payload["required_status_checks"] is None
+    assert master_payload["required_pull_request_reviews"][
+        "required_approving_review_count"
+    ] == 1
+    assert actions_payload == {
+        "default_workflow_permissions": "read",
+        "can_approve_pull_request_reviews": True,
+    }
     for payload in (staging_payload, master_payload):
         assert payload["enforce_admins"] is True
         assert payload["required_pull_request_reviews"] is not None

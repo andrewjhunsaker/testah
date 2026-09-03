@@ -25,9 +25,9 @@ note "A few questions; everything is skippable and re-runnable (Ctrl-C any time)
 # ---------------------------------------------------------------- 1) remote
 say "1/5 — Git remote"
 remote_ready=n
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
 if git remote get-url origin >/dev/null 2>&1; then
   origin_url=$(git remote get-url origin)
-  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo template)
   origin_default=y
   [ "$branch" = template ] && origin_default=n
   note "origin is currently: $origin_url"
@@ -36,6 +36,10 @@ if git remote get-url origin >/dev/null 2>&1; then
   else
     read -r -p "  Correct project remote URL (blank to skip): " url
     if [ -n "$url" ]; then
+      if [ "$branch" != template ]; then
+        note "Refusing to create a remote from $branch. Switch to template and rerun."
+        exit 1
+      fi
       git remote set-url origin "$url" && git push -u origin "$branch" \
         && remote_ready=y
     else
@@ -43,7 +47,10 @@ if git remote get-url origin >/dev/null 2>&1; then
     fi
   fi
 else
-  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)
+  if [ "$branch" != template ]; then
+    note "Refusing to create a remote from $branch. Switch to template and rerun."
+    exit 1
+  fi
   read -r -p "  Connect a remote? [github/skip] " prov
   case "$prov" in
     github)

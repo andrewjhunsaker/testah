@@ -1,0 +1,26 @@
+name: promotion-pr
+
+on:
+  push:
+    branches: [staging]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  keep-draft-current:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open a bot-authored draft promotion PR when needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base master --head staging --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            echo "promotion PR #$existing already tracks staging"
+            exit 0
+          fi
+          gh pr create --repo "$GITHUB_REPOSITORY" --base master --head staging --draft \
+            --title "Promote staging to master" \
+            --body "Bot-authored promotion PR. An agent may mark it ready after local validation; a human must approve and merge it. CI and Codex review already ran on the staging PRs."

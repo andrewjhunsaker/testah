@@ -9,6 +9,7 @@
 .claude/skills/triage/SKILL.md
 .github/workflows/template-sync.yml
 .github/workflows/tests.yml
+.github/workflows/promotion-pr.yml
 .mcp.json
 AGENTS.md
 CLAUDE.md

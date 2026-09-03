@@ -13,8 +13,9 @@ the message bus; the human gates every consequential step.
 - No AI attribution in commits or PRs.
 - Work on a feature branch (`scout/<date>`, `author/<date>`, or another
   descriptive name) and open a PR into `staging`.
-- Never push directly to `master`. Never merge into `master`: open a
-  `staging` → `master` promotion PR and stop for the human to merge it.
+- Never push directly to `master`. Never merge into `master`: GitHub Actions
+  maintains a bot-authored draft `staging` → `master` promotion PR. After local
+  validation, mark it ready and stop for the human to approve and merge it.
 - Follow the delivery and review policy in `AGENTS.md`, including the single
   staging CI + Codex review gate.
 - Agent instructions live in `agents/*.md` — the single, harness-agnostic
