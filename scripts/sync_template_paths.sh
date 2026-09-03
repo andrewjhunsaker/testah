@@ -2,70 +2,57 @@
 set -euo pipefail
 
 source_ref="${1:-origin/master}"
+manifest_path="scripts/template_paths.txt"
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/testah-template-sync.XXXXXX")
+trap 'rm -rf "$work_dir"' EXIT
 
-framework_paths=(
-  ".gitignore"
-  "agents/author.md"
-  "agents/reviewer.md"
-  "agents/scout.md"
-  "agents/steward.md"
-  "scripts/__init__.py"
-  "scripts/coverage_map.py"
-  "scripts/crawl.py"
-  "scripts/drift.py"
-  "scripts/file_tickets.py"
-  "scripts/flake_tracker.py"
-  "scripts/sync_template_paths.sh"
-  "scripts/tests/__init__.py"
-  "scripts/tests/test_coverage_map.py"
-  "scripts/tests/test_crawl.py"
-  "scripts/tests/test_drift.py"
-  "scripts/tests/test_file_tickets.py"
-  "scripts/tests/test_flake_tracker.py"
-  "scripts/tests/test_repository_workflows.py"
-  ".github/workflows/template-sync.yml"
-  ".github/workflows/tests.yml"
-  ".claude/agents/reviewer.md"
-  ".claude/hooks/pytest-tripwire.sh"
-  ".claude/settings.json"
-  ".claude/skills/author/SKILL.md"
-  ".claude/skills/loop-status/SKILL.md"
-  ".claude/skills/scout/SKILL.md"
-  ".claude/skills/steward/SKILL.md"
-  ".claude/skills/triage/SKILL.md"
-  "AGENTS.md"
-  "CLAUDE.md"
-  "setup.sh"
-  ".mcp.json"
-  "package.json"
-  "pnpm-lock.yaml"
-  "pyproject.toml"
-  "uv.lock"
-  "RULES.md"
-  "README.md"
-  "docs/spec.md"
-  "docs/running-the-loop.md"
-  "docs/agents/domain.md"
-  "docs/agents/issue-tracker.md"
-  "docs/agents/triage-labels.md"
-  "dashboard/__init__.py"
-  "dashboard/__main__.py"
-  "dashboard/server.py"
-  "dashboard/snapshot.py"
-  "dashboard/ui/app.ts"
-  "dashboard/ui/index.html"
-  "dashboard/ui/styles.css"
-  "dashboard/e2e/current-snapshot.spec.ts"
-  "dashboard.playwright.config.ts"
-  "tsconfig.dashboard.json"
-  "tests/pages/CurrentSnapshotPage.ts"
-  "requirements/dashboard/current-snapshot/overview.md"
-  "page-maps/dashboard/current-snapshot/page.json"
-)
+new_manifest="$work_dir/new-paths.txt"
+old_manifest="$work_dir/old-paths.txt"
+all_paths="$work_dir/all-paths.txt"
 
-for path in "${framework_paths[@]}"; do
-  git rm -r --ignore-unmatch --quiet -- "$path"
-  if git cat-file -e "${source_ref}:${path}"; then
+if ! git cat-file -e "${source_ref}:${manifest_path}"; then
+  echo "template manifest missing from ${source_ref}: ${manifest_path}" >&2
+  exit 1
+fi
+git show "${source_ref}:${manifest_path}" > "$new_manifest"
+
+if git cat-file -e "HEAD:${manifest_path}" 2>/dev/null; then
+  git show "HEAD:${manifest_path}" > "$old_manifest"
+else
+  : > "$old_manifest"
+fi
+
+validate_manifest() {
+  local manifest="$1" path object_type
+  while IFS= read -r path || [ -n "$path" ]; do
+    [ -z "$path" ] && continue
+    case "$path" in
+      \#*) continue ;;
+      /*|.|..|*/../*|../*|*/..|*.git/*|.git/*|*/|*//*|-*|*[!A-Za-z0-9._/-]*)
+        echo "unsafe or non-file template path: $path" >&2
+        exit 1
+        ;;
+    esac
+    if [ "$manifest" = "$new_manifest" ]; then
+      object_type=$(git cat-file -t "${source_ref}:${path}" 2>/dev/null || true)
+      if [ "$object_type" != "blob" ]; then
+        echo "template path is missing or not a file: $path" >&2
+        exit 1
+      fi
+    fi
+  done < "$manifest"
+}
+
+validate_manifest "$new_manifest"
+validate_manifest "$old_manifest"
+
+sed '/^$/d; /^#/d' "$new_manifest" > "$work_dir/new-active.txt"
+sed '/^$/d; /^#/d' "$old_manifest" > "$work_dir/old-active.txt"
+LC_ALL=C sort -u "$work_dir/new-active.txt" "$work_dir/old-active.txt" > "$all_paths"
+
+while IFS= read -r path; do
+  git rm -f --ignore-unmatch --quiet -- "$path"
+  if grep -Fqx "$path" "$work_dir/new-active.txt"; then
     git checkout "$source_ref" -- "$path"
   fi
-done
+done < "$all_paths"

@@ -53,6 +53,14 @@ else
   esac
 fi
 
+if git remote get-url origin >/dev/null 2>&1; then
+  if bash scripts/bootstrap_release_branches.sh; then
+    note "release branches ready: feature PRs -> staging -> master."
+  else
+    note "could not create staging/master; run: bash scripts/bootstrap_release_branches.sh"
+  fi
+fi
+
 # ------------------------------------------------------------ 2) toolchain
 say "2/5 — Dependencies (Playwright suite + Python toolchain for the Scout)"
 if ask "  Install now?" y; then

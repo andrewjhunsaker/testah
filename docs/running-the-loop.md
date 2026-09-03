@@ -128,11 +128,12 @@ the table above — criteria first (done 2026-08-29).
 ## Setup
 
 New project? `bash setup.sh` after cloning — an interactive wizard that
-connects a git remote (GitHub/GitLab/Bitbucket), installs the toolchain
-(pnpm + Playwright, uv + crawl4ai), writes your first target into
-`targets.yaml` (and the Playwright baseURL), optionally connects Linear
-(validates the API key against api.linear.app, stores it in the gitignored
-`.env`), and prints the command menu. Skippable per-step, safe to re-run;
+connects a git remote (GitHub/GitLab/Bitbucket); creates `staging` and `master`
+from the starter commit when the remote does not already have them; installs
+the toolchain (pnpm + Playwright, uv + crawl4ai); writes your first target into
+`targets.yaml` (and the Playwright baseURL); optionally connects Linear
+(validates the API key against api.linear.app and stores it in the gitignored
+`.env`); and prints the command menu. Skippable per-step, safe to re-run;
 it refuses to clobber a customized `targets.yaml` without asking.
 
 ## The Claude Code harness

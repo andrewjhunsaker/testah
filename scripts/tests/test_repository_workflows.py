@@ -16,28 +16,25 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "dashboard.playwright.config.ts" in workflow
 
 
-def test_template_sync_includes_generic_dashboard_files_only():
+def test_template_sync_uses_a_versioned_exact_file_manifest():
     workflow = (ROOT / ".github/workflows/template-sync.yml").read_text()
     sync_script = (ROOT / "scripts/sync_template_paths.sh").read_text()
 
     assert "bash scripts/sync_template_paths.sh origin/master" in workflow
-    assert "git rm -r --ignore-unmatch" in sync_script
+    assert "git rm -f --ignore-unmatch" in sync_script
     assert "git cat-file -e" in sync_script
+    assert 'HEAD:${manifest_path}' in sync_script
 
     for path in (
         "AGENTS.md",
         "docs/agents/issue-tracker.md",
         "docs/agents/triage-labels.md",
         "docs/agents/domain.md",
-        "dashboard/server.py",
-        "dashboard/e2e/current-snapshot.spec.ts",
-        "dashboard.playwright.config.ts",
-        "tsconfig.dashboard.json",
-        "tests/pages/CurrentSnapshotPage.ts",
-        "requirements/dashboard/current-snapshot/overview.md",
-        "page-maps/dashboard/current-snapshot/page.json",
+        "scripts/bootstrap_release_branches.sh",
+        "scripts/sync_template_paths.sh",
+        "scripts/template_paths.txt",
     ):
-        assert path in sync_script
+        assert path in _allowlisted_paths()
 
     for broad_directory in (
         "agents",
@@ -48,7 +45,17 @@ def test_template_sync_includes_generic_dashboard_files_only():
         "page-maps",
         "requirements",
     ):
-        assert f'  "{broad_directory}"\n' not in sync_script
+        assert broad_directory not in _allowlisted_paths()
+
+
+def test_every_template_manifest_entry_exists_as_a_file():
+    missing_paths = [
+        relative_path
+        for relative_path in _allowlisted_paths()
+        if not (ROOT / relative_path).is_file()
+    ]
+
+    assert missing_paths == []
 
 
 def test_agent_harness_requires_staged_human_gated_delivery():
@@ -95,7 +102,16 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
     _git(repo, "config", "user.email", "workflow@example.test")
 
     _write(repo, "agents/scout.md", "old framework\n")
+    _write(repo, "agents/retired.md", "retired framework\n")
     _write(repo, "dashboard/e2e/current-snapshot.spec.ts", "stale test\n")
+    _write(repo, "scripts/sync_template_paths.sh", "old sync helper\n")
+    _write(
+        repo,
+        "scripts/template_paths.txt",
+        "agents/retired.md\nagents/scout.md\ndashboard/e2e/current-snapshot.spec.ts\n"
+        "dashboard/server.py\nscripts/sync_template_paths.sh\n"
+        "scripts/template_paths.txt\n",
+    )
     _write(repo, "targets.yaml", "template-placeholder\n")
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "template base")
@@ -104,12 +120,21 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
     _write(repo, "agents/scout.md", "new framework\n")
     _write(repo, "agents/project-only.md", "project-specific agent\n")
     _write(repo, "dashboard/server.py", "generic dashboard\n")
+    _write(repo, "scripts/sync_template_paths.sh", "new sync helper\n")
+    (repo / "agents/retired.md").unlink()
     (repo / "dashboard/e2e/current-snapshot.spec.ts").unlink()
     _write(repo, "dashboard/e2e/project-only.spec.ts", "project fixture\n")
+    _write(
+        repo,
+        "scripts/template_paths.txt",
+        "agents/scout.md\ndashboard/server.py\nscripts/sync_template_paths.sh\n"
+        "scripts/template_paths.txt\n",
+    )
     _write(repo, "targets.yaml", "project-specific\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-m", "master framework update")
     _git(repo, "switch", "template")
+    _git(repo, "checkout", "master", "--", "scripts/sync_template_paths.sh")
 
     subprocess.run(
         ["bash", str(ROOT / "scripts/sync_template_paths.sh"), "master"],
@@ -118,8 +143,10 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
     )
 
     assert (repo / "agents/scout.md").read_text() == "new framework\n"
+    assert not (repo / "agents/retired.md").exists()
     assert not (repo / "agents/project-only.md").exists()
     assert (repo / "dashboard/server.py").read_text() == "generic dashboard\n"
+    assert (repo / "scripts/sync_template_paths.sh").read_text() == "new sync helper\n"
     assert not (repo / "dashboard/e2e/current-snapshot.spec.ts").exists()
     assert not (repo / "dashboard/e2e/project-only.spec.ts").exists()
     assert (repo / "targets.yaml").read_text() == "template-placeholder\n"
@@ -139,9 +166,39 @@ def test_template_allowlist_contains_no_project_brand_content():
 
 
 def _allowlisted_paths() -> list[str]:
-    sync_script = (ROOT / "scripts/sync_template_paths.sh").read_text()
-    manifest = sync_script.split("framework_paths=(", 1)[1].split("\n)", 1)[0]
-    return [line.strip().strip('"') for line in manifest.splitlines() if line.strip()]
+    return [
+        line
+        for line in (ROOT / "scripts/template_paths.txt").read_text().splitlines()
+        if line and not line.startswith("#")
+    ]
+
+
+def test_release_branch_bootstrap_creates_master_and_staging(tmp_path):
+    remote = tmp_path / "remote.git"
+    repo = tmp_path / "repo"
+    _git(tmp_path, "init", "--bare", str(remote))
+    repo.mkdir()
+    _git(repo, "init", "--initial-branch=template")
+    _git(repo, "config", "user.name", "Workflow Test")
+    _git(repo, "config", "user.email", "workflow@example.test")
+    _write(repo, "README.md", "starter\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "template base")
+    _git(repo, "remote", "add", "origin", str(remote))
+    _git(repo, "push", "origin", "template")
+
+    subprocess.run(
+        ["bash", str(ROOT / "scripts/bootstrap_release_branches.sh")],
+        cwd=repo,
+        check=True,
+    )
+
+    branches = _git_output(repo, "ls-remote", "--heads", "origin")
+    assert "refs/heads/master" in branches
+    assert "refs/heads/staging" in branches
+    assert "bash scripts/bootstrap_release_branches.sh" in (
+        ROOT / "setup.sh"
+    ).read_text()
 
 
 def _write(repo: Path, relative_path: str, contents: str) -> None:
