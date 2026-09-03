@@ -135,7 +135,9 @@ when needed. When replacing `origin`, setup first pushes the allowed `template`
 branch so the human can create `master` from the same history in GitHub. It
 never creates or pushes `master`. GitHub is required for the current PR
 protections, Actions checks, Codex review, and issue workflow. The wizard then
-provisions the canonical GitHub triage labels idempotently, installs the
+provisions the canonical GitHub triage labels and branch protections
+idempotently. It stops and refuses to report the repository ready if either
+branch is missing or protection cannot be applied. The wizard then installs the
 toolchain (pnpm + Playwright, uv + crawl4ai), writes your first target into
 `targets.yaml` (and the Playwright baseURL), optionally connects Linear
 (validates the API key against api.linear.app and stores it in the gitignored

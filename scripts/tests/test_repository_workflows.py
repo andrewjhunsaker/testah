@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import os
 import subprocess
 
@@ -34,6 +35,7 @@ def test_template_sync_uses_a_versioned_exact_file_manifest():
         "docs/agents/triage-labels.md",
         "docs/agents/domain.md",
         "scripts/bootstrap_github_labels.sh",
+        "scripts/bootstrap_github_protections.sh",
         "scripts/bootstrap_release_branches.sh",
         "scripts/sync_template_paths.sh",
         "scripts/template_paths.txt",
@@ -290,6 +292,70 @@ def test_setup_provisions_canonical_github_triage_labels(tmp_path):
     calls = label_log.read_text().splitlines()
     assert len(calls) == 5
     assert all("label create" in call and "--force" in call for call in calls)
+
+
+def test_setup_provisions_github_branch_protection(tmp_path):
+    setup = (ROOT / "setup.sh").read_text()
+    protection_bootstrap = (
+        ROOT / "scripts/bootstrap_github_protections.sh"
+    ).read_text()
+
+    assert "bash scripts/bootstrap_github_protections.sh" in setup
+    assert "repository is not ready" in setup
+    assert "branches/staging/protection" in protection_bootstrap
+    assert "branches/master/protection" in protection_bootstrap
+    assert '"contexts":["scripts-unit","e2e","dashboard"]' in protection_bootstrap
+    assert '"required_status_checks":null' in protection_bootstrap
+    assert protection_bootstrap.count('"enforce_admins":true') == 2
+    assert protection_bootstrap.count('"required_linear_history":true') == 2
+    assert protection_bootstrap.count('"required_conversation_resolution":true') == 2
+    assert protection_bootstrap.count('"allow_force_pushes":false') == 2
+    assert protection_bootstrap.count('"allow_deletions":false') == 2
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text(
+        "#!/usr/bin/env bash\n"
+        'payload=$(cat)\n'
+        'printf \'%s|%s\\n\' "$*" "$payload" >> "$TESTAH_PROTECTION_LOG"\n'
+    )
+    fake_gh.chmod(0o755)
+    protection_log = tmp_path / "protections.log"
+    env = os.environ | {
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "TESTAH_PROTECTION_LOG": str(protection_log),
+    }
+
+    subprocess.run(
+        ["bash", str(ROOT / "scripts/bootstrap_github_protections.sh")],
+        env=env,
+        check=True,
+    )
+
+    calls = protection_log.read_text().splitlines()
+    assert len(calls) == 2
+    staging_args, staging_payload_text = calls[0].split("|", 1)
+    master_args, master_payload_text = calls[1].split("|", 1)
+    assert "--method PUT" in staging_args
+    assert "branches/staging/protection" in staging_args
+    assert "--method PUT" in master_args
+    assert "branches/master/protection" in master_args
+    staging_payload = json.loads(staging_payload_text)
+    master_payload = json.loads(master_payload_text)
+    assert staging_payload["required_status_checks"]["contexts"] == [
+        "scripts-unit",
+        "e2e",
+        "dashboard",
+    ]
+    assert master_payload["required_status_checks"] is None
+    for payload in (staging_payload, master_payload):
+        assert payload["enforce_admins"] is True
+        assert payload["required_pull_request_reviews"] is not None
+        assert payload["required_linear_history"] is True
+        assert payload["allow_force_pushes"] is False
+        assert payload["allow_deletions"] is False
+        assert payload["required_conversation_resolution"] is True
 
 
 def _write(repo: Path, relative_path: str, contents: str) -> None:

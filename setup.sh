@@ -62,23 +62,34 @@ else
 fi
 
 if [ "$remote_ready" = y ]; then
-  if bash scripts/bootstrap_release_branches.sh; then
-    note "staging ready: feature PRs -> staging -> human-approved master."
-  else
-    note "staging needs a human-initialized remote master based on the pushed"
-    note "template branch. Create it in GitHub, then run:"
-    note "bash scripts/bootstrap_release_branches.sh"
-  fi
   if have gh; then
     if bash scripts/bootstrap_github_labels.sh; then
       note "canonical GitHub triage labels ready."
     else
-      note "could not provision triage labels; rerun:"
-      note "bash scripts/bootstrap_github_labels.sh"
+      note "could not provision triage labels; repository is not ready."
+      note "Authenticate gh, then rerun setup."
+      exit 1
     fi
   else
-    note "gh is required to provision triage labels later:"
-    note "bash scripts/bootstrap_github_labels.sh"
+    note "gh is required to provision labels and branch protection;"
+    note "repository is not ready. Install and authenticate gh, then rerun setup."
+    exit 1
+  fi
+
+  if ! bash scripts/bootstrap_release_branches.sh; then
+    note "staging needs a human-initialized remote master based on the pushed"
+    note "template branch. Create it in GitHub, then run:"
+    note "bash setup.sh"
+    note "repository is not ready until setup provisions branch protection."
+    exit 1
+  fi
+
+  if bash scripts/bootstrap_github_protections.sh; then
+    note "protected release flow ready: feature PRs -> staging -> human-approved master."
+  else
+    note "branch protection failed; repository is not ready."
+    note "Fix GitHub permissions or plan support, then rerun setup."
+    exit 1
   fi
 fi
 
