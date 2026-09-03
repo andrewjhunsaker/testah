@@ -51,9 +51,17 @@ results in the last 10 runs**; silence means no crossing. It is idempotent —
 reprocessing the same report under the same run-id does not double-count.
 
 CI is `.github/workflows/tests.yml`: `scripts-unit` (pytest) and `e2e`
-(Playwright, chromium), on push to `master` and on every PR. `e2e` uploads
-`reports/` as the `playwright-report` artifact even on failure — that artifact
-is Mode B's input.
+(Playwright, chromium), on pushes to `staging` and `master` and on every PR.
+When the generic dashboard is present, the separate `dashboard` job runs its
+typecheck and loopback-browser suite. `e2e` uploads `reports/` as the
+`playwright-report` artifact even on failure — that artifact is Mode B's input.
+
+## Staging promotion
+
+Feature and framework PRs land on `staging` first. After the combined branch is
+green and has been exercised locally, promote it with a PR from `staging` to
+`master`; the human remains the merge gate. A push to `master` is therefore a
+validated release event and triggers the project-data-free `template` sync.
 
 ## Gates in PRODUCTION mode
 
@@ -191,13 +199,14 @@ flake-history. New adopters clone it and point `targets.yaml` at their app.
 
 Maintenance is AUTOMATED: `.github/workflows/template-sync.yml` runs on
 every push to `master` and checks out only framework paths onto `template`
-(agents, scripts, .github, .mcp.json, package/lock files, RULES.md, README,
-docs/spec.md, docs/running-the-loop.md). Manual fallback, same paths:
+(agents, scripts, dashboard, .github, .mcp.json, package/lock files, RULES.md,
+README, `docs/spec.md`, `docs/running-the-loop.md`, and the dashboard's exact
+POM/requirement/page map).
+Manual fallback, same paths after the dashboard exists:
 
     git checkout template
-    git checkout master -- agents scripts .github .claude CLAUDE.md setup.sh \
-      .mcp.json package.json pnpm-lock.yaml pyproject.toml uv.lock RULES.md \
-      README.md docs/spec.md docs/running-the-loop.md
+    git checkout master -- scripts/sync_template_paths.sh
+    bash scripts/sync_template_paths.sh master
     uv run pytest -q && git add -A && git commit -m "sync framework from master"
     git checkout master
 
@@ -205,8 +214,9 @@ The sync workflow is guarded to run only in the upstream testah repo — in a
 project created from the template it inherits harmlessly as a no-op (delete
 it there if you prefer a clean Actions list).
 
-Never checkout project-data paths (`targets.yaml`, `page-maps/`,
+Never broadly checkout project-data paths (`targets.yaml`, `page-maps/`,
 `requirements/`, `tests/specs/`, `tests/pages/`, `tickets/`, `triage/`,
 `critiques/`, `reviews/`, `flake-history.json`, `changed-pages.json`,
 `docs/plans/`, `docs/review-packet-*`, `docs/coverage/`) onto
-`template`.
+`template`. Only the exact dashboard support files listed above are exceptions;
+Vizaeo paths and other target-specific artifacts remain excluded.
