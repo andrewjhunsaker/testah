@@ -13,18 +13,22 @@ These rules apply to every agent and automation working in this repository.
   verifies that the exact head SHA has a review with no inline findings. Merge
   only after that status passes.
 - Each merge to `staging` makes GitHub Actions open or update a bot-authored
-  draft promotion PR into `master`. After local validation, an agent may mark
-  that PR ready and must stop. A human must approve the latest staging head and
-  merge it; new staging commits dismiss the prior approval. Do not require a
-  different last-push approver: agent staging merges use the human owner's
-  GitHub identity, and stale-review dismissal already refreshes the gate.
+  draft promotion PR into `master`; a new staging commit returns an existing
+  ready promotion to draft. After local validation, an agent may mark that PR
+  ready and must stop. Master accepts PRs only from this repository's protected
+  `staging` branch. A human must approve the latest staging head and merge it;
+  new staging commits dismiss the prior approval. Do not require a different
+  last-push approver: agent staging merges use the human owner's GitHub identity,
+  and stale-review dismissal already refreshes the gate.
 - Do not rerun CI or request another Codex review on the promotion PR. Its
   contents were already gated on their staging PRs.
-- One-time migration exception: an existing repository's first PR introducing
-  the trusted `codex-review` workflow cannot emit that required status until the
-  workflow reaches the default branch. Verify a clean Codex review on the exact
-  head manually for that PR. No exception exists after the workflow is on
-  `master`; repositories initialized from `template` already contain it.
+- One-time migration exception: an existing repository's first release that
+  introduces the trusted gate workflow cannot emit `codex-review` or
+  `promotion-source` until that workflow reaches the default branch. Manually
+  verify the exact-head Codex review on its staging PR and that its first master
+  PR comes from this repository's `staging` branch. No exception exists after
+  the workflow is on `master`; repositories initialized from `template` already
+  contain it.
 - A merge to `master` is the release event. Let the template-sync workflow copy
   its exact allowlist of project-agnostic framework files to `template`; never
   copy target-specific project data there.

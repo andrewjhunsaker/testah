@@ -49,6 +49,22 @@ def test_codex_review_gate_runs_only_trusted_workflow_code():
     assert "--argjson review_id" in workflow
 
 
+def test_master_pr_gate_accepts_only_same_repo_staging_promotions():
+    workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
+
+    assert "branches: [staging, master]" in workflow
+    assert "\n  promotion-source:\n" in workflow
+    assert "github.event.pull_request.base.ref == 'master'" in workflow
+    assert "github.event.pull_request.head.repo.full_name" in workflow
+    assert "github.event.pull_request.head.ref" in workflow
+    assert '"$HEAD_REPOSITORY" = "$REPOSITORY"' in workflow
+    assert '"$HEAD_BRANCH" = "staging"' in workflow
+    assert "statuses/${HEAD_SHA}" in workflow
+    assert "context=promotion-source" in workflow
+    assert "state=success" in workflow
+    assert "state=failure" in workflow
+
+
 def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     workflow = (ROOT / ".github/workflows/promotion-pr.yml").read_text()
 
@@ -58,6 +74,10 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     assert "--base master" in workflow
     assert "--head staging" in workflow
     assert "--draft" in workflow
+    assert "--json number,isDraft" in workflow
+    assert "(.[0] // empty)" in workflow
+    assert "gh pr ready" in workflow
+    assert "--undo" in workflow
     assert "@codex review" not in workflow
     assert "pytest" not in workflow
     assert "playwright" not in workflow
@@ -357,7 +377,7 @@ def test_setup_provisions_github_branch_protection(tmp_path):
         '"contexts":["scripts-unit","e2e","dashboard","codex-review"]'
         in protection_bootstrap
     )
-    assert '"required_status_checks":null' in protection_bootstrap
+    assert '"contexts":["promotion-source"]' in protection_bootstrap
     assert '"required_approving_review_count":1' in protection_bootstrap
     assert '"dismiss_stale_reviews":true' in protection_bootstrap
     assert '"require_last_push_approval":false' in protection_bootstrap
@@ -410,7 +430,10 @@ def test_setup_provisions_github_branch_protection(tmp_path):
         "dashboard",
         "codex-review",
     ]
-    assert master_payload["required_status_checks"] is None
+    assert master_payload["required_status_checks"] == {
+        "strict": False,
+        "contexts": ["promotion-source"],
+    }
     assert master_payload["required_pull_request_reviews"][
         "required_approving_review_count"
     ] == 1

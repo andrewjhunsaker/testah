@@ -2,7 +2,7 @@ name: codex-review
 
 on:
   pull_request_target:
-    branches: [staging]
+    branches: [staging, master]
     types: [opened, reopened, synchronize]
   pull_request_review:
     branches: [staging]
@@ -16,7 +16,8 @@ permissions:
 jobs:
   codex-review:
     if: >-
-      github.event_name == 'pull_request_target' ||
+      (github.event_name == 'pull_request_target' &&
+      github.event.pull_request.base.ref == 'staging') ||
       github.event.review.user.login == 'chatgpt-codex-connector[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -73,3 +74,34 @@ jobs:
             -f context=codex-review \
             -f description="Codex review has ${finding_count} finding(s)"
           exit 1
+
+  promotion-source:
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.base.ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the protected staging branch as the promotion source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ "$HEAD_REPOSITORY" = "$REPOSITORY" ] && [ "$HEAD_BRANCH" = "staging" ]; then
+            state=success
+            description='Promotion source is the protected staging branch'
+          else
+            state=failure
+            description='Master accepts promotion PRs only from this repository staging branch'
+          fi
+
+          gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state="$state" \
+            -f context=promotion-source \
+            -f description="$description"
+
+          if [ "$state" = "failure" ]; then
+            exit 1
+          fi

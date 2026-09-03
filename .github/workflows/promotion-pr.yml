@@ -16,9 +16,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base master --head staging --state open --json number --jq '.[0].number')
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base master --head staging --state open --json number,isDraft --jq '(.[0] // empty) | [.number, .isDraft] | @tsv')
           if [ -n "$existing" ]; then
-            echo "promotion PR #$existing already tracks staging"
+            read -r number is_draft <<< "$existing"
+            if [ "$is_draft" = "false" ]; then
+              gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+              echo "returned promotion PR #$number to draft for the new staging head"
+            else
+              echo "draft promotion PR #$number already tracks staging"
+            fi
             exit 0
           fi
           gh pr create --repo "$GITHUB_REPOSITORY" --base master --head staging --draft \
