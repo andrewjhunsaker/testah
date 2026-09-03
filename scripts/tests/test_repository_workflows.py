@@ -70,9 +70,11 @@ def test_master_pr_gate_accepts_only_same_repo_staging_promotions():
     assert "github.event.pull_request.base.ref == 'master'" in workflow
     assert "github.event.pull_request.head.repo.full_name" in workflow
     assert "github.event.pull_request.head.ref" in workflow
+    assert "github.event.pull_request.user.login" in workflow
     assert "github.event.pull_request.merge_commit_sha" in workflow
     assert '"$HEAD_REPOSITORY" = "$REPOSITORY"' in workflow
     assert '"$HEAD_BRANCH" = "staging"' in workflow
+    assert '"$AUTHOR_LOGIN" = "github-actions[bot]"' in workflow
     assert "checks: write" in workflow
     assert "check-runs" in workflow
     assert 'head_sha="$MERGE_SHA"' in workflow
@@ -100,7 +102,9 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     assert "--draft" in workflow
     assert "head=${OWNER}:staging" in workflow
     assert "[.number, .draft]" in workflow
-    assert "(.[0] // empty)" in workflow
+    assert '.user.login == "github-actions[bot]"' in workflow
+    assert "non-bot staging promotion PR" in workflow
+    assert "[0] // empty" in workflow
     assert "gh pr ready" in workflow
     assert "--undo" in workflow
     assert "@codex review" not in workflow
@@ -309,6 +313,12 @@ def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path)
     assert "git fetch origin --prune" in setup
     assert "gh repo edit --default-branch master" in setup
     assert "defaultBranchRef" in setup
+    assert "--enable-merge-commit" in setup
+    assert "--enable-rebase-merge=false" in setup
+    assert "--enable-squash-merge=false" in setup
+    assert "mergeCommitAllowed" in setup
+    assert "rebaseMergeAllowed" in setup
+    assert "squashMergeAllowed" in setup
     normalized_setup = " ".join(setup.split())
     assert (
         'git remote set-url origin "$url" && git push -u origin "$branch"'
@@ -444,7 +454,7 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     assert "actions/permissions/workflow" in protection_bootstrap
     assert '"can_approve_pull_request_reviews":true' in protection_bootstrap
     assert protection_bootstrap.count('"enforce_admins":true') == 2
-    assert protection_bootstrap.count('"required_linear_history":true') == 2
+    assert protection_bootstrap.count('"required_linear_history":false') == 2
     assert protection_bootstrap.count('"required_conversation_resolution":true') == 2
     assert protection_bootstrap.count('"allow_force_pushes":false') == 2
     assert protection_bootstrap.count('"allow_deletions":false') == 2
@@ -514,7 +524,7 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     for payload in (staging_payload, master_payload):
         assert payload["enforce_admins"] is True
         assert payload["required_pull_request_reviews"] is not None
-        assert payload["required_linear_history"] is True
+        assert payload["required_linear_history"] is False
         assert payload["allow_force_pushes"] is False
         assert payload["allow_deletions"] is False
         assert payload["required_conversation_resolution"] is True

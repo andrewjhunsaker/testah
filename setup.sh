@@ -105,9 +105,20 @@ if [ "$remote_ready" = y ]; then
     note "could not make master the GitHub default branch; repository is not ready."
     exit 1
   fi
-  default_branch=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null)
-  if [ "$default_branch" != master ]; then
-    note "GitHub default branch is $default_branch, not master; repository is not ready."
+  if ! gh repo edit --enable-merge-commit --enable-rebase-merge=false --enable-squash-merge=false; then
+    note "could not require ancestry-preserving PR merges; repository is not ready."
+    exit 1
+  fi
+  repo_settings=$(gh repo view \
+    --json defaultBranchRef,mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed \
+    --jq '[.defaultBranchRef.name, .mergeCommitAllowed, .rebaseMergeAllowed, .squashMergeAllowed] | @tsv' \
+    2>/dev/null)
+  IFS=$'\t' read -r default_branch merge_allowed rebase_allowed squash_allowed <<< "$repo_settings"
+  if [ "$default_branch" != master ] \
+    || [ "$merge_allowed" != true ] \
+    || [ "$rebase_allowed" != false ] \
+    || [ "$squash_allowed" != false ]; then
+    note "GitHub must use default master and merge-commit-only PRs; repository is not ready."
     exit 1
   fi
 

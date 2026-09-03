@@ -19,8 +19,10 @@ jobs:
           STAGING_SHA: ${{ github.sha }}
         run: |
           OWNER=${GITHUB_REPOSITORY%%/*}
-          existing=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=master&head=${OWNER}:staging" \
-            --jq '(.[0] // empty) | [.number, .draft] | @tsv')
+          open_prs=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=master&head=${OWNER}:staging")
+          existing=$(jq -r \
+            '([.[] | select(.user.login == "github-actions[bot]")][0] // empty) | [.number, .draft] | @tsv' \
+            <<< "$open_prs")
           if [ -n "$existing" ]; then
             read -r number is_draft <<< "$existing"
             if [ "$is_draft" = "false" ]; then
@@ -30,6 +32,13 @@ jobs:
               echo "draft promotion PR #$number already tracks staging"
             fi
           else
+            conflicting=$(jq -r \
+              '([.[] | select(.user.login != "github-actions[bot]")][0] // empty) | .number // empty' \
+              <<< "$open_prs")
+            if [ -n "$conflicting" ]; then
+              echo "non-bot staging promotion PR #$conflicting must be closed before automation can continue" >&2
+              exit 1
+            fi
             pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base master --head staging --draft \
               --title "Promote staging to master" \
               --body "Bot-authored promotion PR. An agent may mark it ready after local validation; a human must approve and merge it. CI and Codex review already ran on the staging PRs.")

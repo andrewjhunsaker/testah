@@ -18,12 +18,15 @@ These rules apply to every agent and automation working in this repository.
   ready promotion to draft. The staging-push workflow publishes a
   `promotion-source` check on that PR's unique test-merge commit because GitHub
   does not automatically run the trusted target workflow for a PR created with
-  `GITHUB_TOKEN`; the master-target gate publishes a failing PR-specific check
-  for every other source. After local validation, an agent may mark that PR
-  ready and must stop. A human must approve the latest staging head and merge
-  it; new staging commits dismiss the prior approval. Do not require a different
-  last-push approver: agent staging merges use the human owner's GitHub identity,
-  and stale-review dismissal already refreshes the gate.
+  `GITHUB_TOKEN`; the master-target gate requires the same-repository `staging`
+  source and `github-actions[bot]` author, then publishes a failing PR-specific
+  check for every other source or author. After local validation, an agent may
+  mark that PR ready and must stop. A human must approve the latest staging head
+  and merge it with the repository's only enabled PR method: a merge commit.
+  This preserves `staging` ancestry across releases. New staging commits dismiss
+  the prior approval. Do not require a different last-push approver: agent
+  staging merges use the human owner's GitHub identity, and stale-review
+  dismissal already refreshes the gate.
 - Do not rerun CI or request another Codex review on the promotion PR. Its
   contents were already gated on their staging PRs.
 - One-time migration exception: an existing repository's first PR introducing
@@ -40,8 +43,10 @@ These rules apply to every agent and automation working in this repository.
 GitHub branch protection is the mechanical enforcement layer. `master` must be
 the repository default branch, and every required status/check must be bound to
 the GitHub Actions app that produces it rather than trusting a context name
-alone. These instructions remain defense-in-depth and define who may perform
-each action.
+alone. The repository enables merge commits and disables squash/rebase PR
+merges so both staging integration and master promotion preserve ancestry.
+These instructions remain defense-in-depth and define who may perform each
+action.
 
 ## Code Review Rules
 

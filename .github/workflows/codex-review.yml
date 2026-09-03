@@ -160,8 +160,11 @@ jobs:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
         run: |
-          if [ "$HEAD_REPOSITORY" = "$REPOSITORY" ] && [ "$HEAD_BRANCH" = "staging" ]; then
+          if [ "$HEAD_REPOSITORY" = "$REPOSITORY" ] \
+            && [ "$HEAD_BRANCH" = "staging" ] \
+            && [ "$AUTHOR_LOGIN" = "github-actions[bot]" ]; then
             conclusion=success
           else
             conclusion=failure

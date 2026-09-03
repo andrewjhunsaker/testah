@@ -78,10 +78,12 @@ carries this repo's own working artifacts. Setup also creates or repairs the
 canonical GitHub triage labels and applies the required protections to
 `staging` and `master`, widens the single-branch clone's fetch refspec, makes
 `master` the verified GitHub default, and binds required checks to the GitHub
-Actions app that produces them. It stops instead of reporting the repository
-ready when those settings cannot be applied. Merges to `staging` maintain a
-bot-authored draft promotion PR, allowing the human owner—not the PR author—to
-provide the required approval before `master` changes.
+Actions app that produces them. It also makes merge commits the only enabled PR
+merge method so `staging` remains an ancestor of each released `master`. It
+stops instead of reporting the repository ready when those settings cannot be
+applied. Merges to `staging` maintain a bot-authored draft promotion PR,
+allowing the human owner—not the PR author—to provide the required approval
+before `master` changes.
 
 - **Design:** [docs/spec.md](docs/spec.md)
 - **How to run each pass:** [docs/running-the-loop.md](docs/running-the-loop.md)
