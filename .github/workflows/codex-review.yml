@@ -6,10 +6,13 @@ on:
     types: [opened, reopened, synchronize]
   pull_request_review:
     types: [submitted]
+  issue_comment:
+    types: [created, edited]
 
 permissions:
   checks: write
   contents: read
+  issues: read
   pull-requests: read
   statuses: write
 
@@ -48,6 +51,30 @@ jobs:
               --arg codex_login "$CODEX_LOGIN" --arg head_sha "$HEAD_SHA" \
               '[.[][] | select(.user.login == $codex_login and .commit_id == $head_sha)] | last | .id // empty')
             if [ -z "$REVIEW_ID" ]; then
+              CLEAN_BODY=$(gh api \
+                "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+                --paginate --slurp | jq -r --arg codex_login "$CODEX_LOGIN" \
+                --arg clean_phrase "Codex Review: Didn't find any major issues." \
+                '[.[][] | select(.user.login == $codex_login and (.body | contains($clean_phrase)))] | last | .body // empty')
+              if [ -z "$CLEAN_BODY" ]; then
+                exit 0
+              fi
+
+              REVIEWED_PREFIX=$(printf '%s\n' "$CLEAN_BODY" | sed -nE \
+                's/^\*\*Reviewed commit:\*\* `([0-9a-f]{7,40})`$/\1/p' | head -n 1)
+              if [ -z "$REVIEWED_PREFIX" ]; then
+                exit 0
+              fi
+
+              RESOLVED_SHA=$(gh api "repos/${REPOSITORY}/commits/${REVIEWED_PREFIX}" --jq .sha)
+              if [ "$RESOLVED_SHA" != "$HEAD_SHA" ]; then
+                exit 0
+              fi
+
+              gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+                -f state=success \
+                -f context=codex-review \
+                -f description='Codex review is clean for this commit'
               exit 0
             fi
           else
@@ -76,6 +103,48 @@ jobs:
             -f context=codex-review \
             -f description="Codex review has ${finding_count} finding(s)"
           exit 1
+
+  codex-clean-review:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'chatgpt-codex-connector[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish a clean Codex result on its resolved full commit SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          if [[ "$COMMENT_BODY" != *"Codex Review: Didn't find any major issues."* ]]; then
+            exit 0
+          fi
+
+          REVIEWED_PREFIX=$(printf '%s\n' "$COMMENT_BODY" | sed -nE \
+            's/^\*\*Reviewed commit:\*\* `([0-9a-f]{7,40})`$/\1/p' | head -n 1)
+          if [ -z "$REVIEWED_PREFIX" ]; then
+            exit 0
+          fi
+
+          pr_state=$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" \
+            --jq '[.base.ref, .head.sha] | @tsv')
+          IFS=$'\t' read -r base_ref HEAD_SHA <<< "$pr_state"
+          if [ "$base_ref" != "staging" ]; then
+            exit 0
+          fi
+
+          RESOLVED_SHA=$(gh api "repos/${REPOSITORY}/commits/${REVIEWED_PREFIX}" --jq .sha)
+          if [ "$RESOLVED_SHA" != "$HEAD_SHA" ]; then
+            echo "ignoring clean Codex result for non-head commit ${RESOLVED_SHA}"
+            exit 0
+          fi
+
+          gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state=success \
+            -f context=codex-review \
+            -f description='Codex review is clean for this commit'
 
   promotion-source:
     name: validate-promotion-source-event

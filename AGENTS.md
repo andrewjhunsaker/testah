@@ -10,8 +10,9 @@ These rules apply to every agent and automation working in this repository.
 - Use one Codex review gate on each staging PR: request `@codex review` after
   CI passes. Address consequential findings and request a follow-up review only
   when the reviewed commit must change. The required `codex-review` status
-  verifies that the exact head SHA has a review with no inline findings. Merge
-  only after that status passes.
+  verifies either a zero-finding review event for the exact head or a trusted
+  clean-result comment whose abbreviated commit resolves to that exact full
+  head SHA. Merge only after that status passes.
 - Each merge to `staging` makes GitHub Actions open or update a bot-authored
   draft promotion PR into `master`; a new staging commit returns an existing
   ready promotion to draft. The staging-push workflow publishes a

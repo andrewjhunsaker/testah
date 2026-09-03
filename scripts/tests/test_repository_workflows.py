@@ -25,6 +25,8 @@ def test_codex_review_gate_runs_only_trusted_workflow_code():
 
     assert "pull_request_target:" in workflow
     assert "pull_request_review:" in workflow
+    assert "issue_comment:" in workflow
+    assert "types: [created, edited]" in workflow
     assert "types: [submitted]" in workflow
     assert "branches: [staging, master]" in workflow
     assert "pull_request_review:\n    types: [submitted]" in workflow
@@ -36,12 +38,21 @@ def test_codex_review_gate_runs_only_trusted_workflow_code():
     assert "github.event.review.id" in workflow
     assert "chatgpt-codex-connector[bot]" in workflow
     assert "github.event.pull_request.base.ref == 'staging'" in workflow
+    assert "github.event.comment.user.login" in workflow
+    assert "Codex Review: Didn't find any major issues." in workflow
+    assert "Reviewed commit:" in workflow
+    assert "commits/${REVIEWED_PREFIX}" in workflow
+    assert '"$RESOLVED_SHA" != "$HEAD_SHA"' in workflow
+    assert "issues/${PR_NUMBER}/comments?per_page=100" in workflow
+    assert workflow.index("-f state=pending") < workflow.index(
+        "issues/${PR_NUMBER}/comments?per_page=100"
+    )
     assert "pull_request_review_id" in workflow
     assert "statuses/${HEAD_SHA}" in workflow
     assert "state=pending" in workflow
     assert "state=success" in workflow
     assert "state=failure" in workflow
-    assert workflow.count("--paginate --slurp | jq") == 2
+    assert workflow.count("--paginate --slurp | jq") == 3
     assert "pulls/${PR_NUMBER}/reviews?per_page=100" in workflow
     assert 'select(.user.login == $codex_login and .commit_id == $head_sha)' in workflow
     assert "| last | .id // empty" in workflow

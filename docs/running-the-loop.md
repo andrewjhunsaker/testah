@@ -64,7 +64,9 @@ requires the `scripts-unit`, `e2e`, and `dashboard` checks. Once those checks
 pass, request `@codex review`; address consequential findings and request a
 follow-up review when they require a new commit. The agent may merge the PR into
 `staging` only after the required `codex-review` status confirms that the exact
-head SHA has a Codex review with no inline findings.
+head SHA has either a zero-finding Codex review event or a trusted clean-result
+comment whose abbreviated commit ID resolves through GitHub to that exact full
+SHA.
 
 For an existing repository migrating to these gates, the first staging PR that
 introduces the trusted `pull_request_target` workflow cannot emit its own
