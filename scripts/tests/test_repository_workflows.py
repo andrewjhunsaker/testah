@@ -173,7 +173,42 @@ def _allowlisted_paths() -> list[str]:
     ]
 
 
-def test_release_branch_bootstrap_creates_master_and_staging(tmp_path):
+def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path):
+    remote = tmp_path / "remote.git"
+    repo = tmp_path / "repo"
+    _git(tmp_path, "init", "--bare", str(remote))
+    repo.mkdir()
+    _git(repo, "init", "--initial-branch=template")
+    _git(repo, "config", "user.name", "Workflow Test")
+    _git(repo, "config", "user.email", "workflow@example.test")
+    _write(repo, "README.md", "starter\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "template base")
+    _git(repo, "remote", "add", "origin", str(remote))
+    _git(repo, "push", "origin", "template")
+    # Simulate the human-controlled, one-time initialization required before setup.
+    _git(repo, "push", "origin", "HEAD:master")
+
+    subprocess.run(
+        ["bash", str(ROOT / "scripts/bootstrap_release_branches.sh")],
+        cwd=repo,
+        check=True,
+    )
+
+    branches = _git_output(repo, "ls-remote", "--heads", "origin")
+    assert "refs/heads/master" in branches
+    assert "refs/heads/staging" in branches
+    bootstrap = (ROOT / "scripts/bootstrap_release_branches.sh").read_text()
+    assert 'git push origin "refs/heads/${release_branch}' not in bootstrap
+    assert "bash scripts/bootstrap_release_branches.sh" in (
+        ROOT / "setup.sh"
+    ).read_text()
+    setup = (ROOT / "setup.sh").read_text()
+    assert "Use this as the project remote?" in setup
+    assert "git remote set-url origin" in setup
+
+
+def test_release_branch_bootstrap_refuses_to_create_master(tmp_path):
     remote = tmp_path / "remote.git"
     repo = tmp_path / "repo"
     _git(tmp_path, "init", "--bare", str(remote))
@@ -187,18 +222,18 @@ def test_release_branch_bootstrap_creates_master_and_staging(tmp_path):
     _git(repo, "remote", "add", "origin", str(remote))
     _git(repo, "push", "origin", "template")
 
-    subprocess.run(
+    result = subprocess.run(
         ["bash", str(ROOT / "scripts/bootstrap_release_branches.sh")],
         cwd=repo,
-        check=True,
+        capture_output=True,
+        text=True,
     )
 
+    assert result.returncode != 0
+    assert "human-initialized master" in result.stderr
     branches = _git_output(repo, "ls-remote", "--heads", "origin")
-    assert "refs/heads/master" in branches
-    assert "refs/heads/staging" in branches
-    assert "bash scripts/bootstrap_release_branches.sh" in (
-        ROOT / "setup.sh"
-    ).read_text()
+    assert "refs/heads/master" not in branches
+    assert "refs/heads/staging" not in branches
 
 
 def _write(repo: Path, relative_path: str, contents: str) -> None:

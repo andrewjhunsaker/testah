@@ -24,8 +24,23 @@ note "A few questions; everything is skippable and re-runnable (Ctrl-C any time)
 
 # ---------------------------------------------------------------- 1) remote
 say "1/5 — Git remote"
+remote_ready=n
 if git remote get-url origin >/dev/null 2>&1; then
-  note "origin already set: $(git remote get-url origin) — skipping."
+  origin_url=$(git remote get-url origin)
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo template)
+  origin_default=y
+  [ "$branch" = template ] && origin_default=n
+  note "origin is currently: $origin_url"
+  if ask "  Use this as the project remote?" "$origin_default"; then
+    remote_ready=y
+  else
+    read -r -p "  Correct project remote URL (blank to skip): " url
+    if [ -n "$url" ]; then
+      git remote set-url origin "$url" && remote_ready=y
+    else
+      note "remote setup skipped; origin was left unchanged."
+    fi
+  fi
 else
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)
   read -r -p "  Connect a remote? [github/gitlab/bitbucket/skip] " prov
@@ -34,30 +49,36 @@ else
       if have gh; then
         read -r -p "  Repo (owner/name): " slug
         gh repo create "$slug" --private --source . --push \
-          && note "created and pushed." || note "gh failed — add a remote manually later."
+          && { note "created and pushed."; remote_ready=y; } \
+          || note "gh failed — add a remote manually later."
       else
         read -r -p "  Remote URL (git@github.com:you/repo.git): " url
-        git remote add origin "$url" && git push -u origin "$branch"
+        git remote add origin "$url" && git push -u origin "$branch" \
+          && remote_ready=y
       fi ;;
     gitlab)
       if have glab; then
-        glab repo create --private && git push -u origin "$branch"
+        glab repo create --private && git push -u origin "$branch" \
+          && remote_ready=y
       else
         read -r -p "  Remote URL (git@gitlab.com:you/repo.git): " url
-        git remote add origin "$url" && git push -u origin "$branch"
+        git remote add origin "$url" && git push -u origin "$branch" \
+          && remote_ready=y
       fi ;;
     bitbucket)
       read -r -p "  Remote URL (git@bitbucket.org:you/repo.git): " url
-      git remote add origin "$url" && git push -u origin "$branch" ;;
+      git remote add origin "$url" && git push -u origin "$branch" \
+        && remote_ready=y ;;
     *) note "skipped — later: git remote add origin <url> && git push -u origin $branch" ;;
   esac
 fi
 
-if git remote get-url origin >/dev/null 2>&1; then
+if [ "$remote_ready" = y ]; then
   if bash scripts/bootstrap_release_branches.sh; then
-    note "release branches ready: feature PRs -> staging -> master."
+    note "staging ready: feature PRs -> staging -> human-approved master."
   else
-    note "could not create staging/master; run: bash scripts/bootstrap_release_branches.sh"
+    note "staging needs a human-initialized remote master. Create master in"
+    note "your git host, then run: bash scripts/bootstrap_release_branches.sh"
   fi
 fi
 

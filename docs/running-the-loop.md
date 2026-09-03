@@ -73,7 +73,7 @@ another Codex review: those gates already ran on the constituent staging PRs.
 
 The merge to `master` is the validated release event. It triggers the
 project-data-free `template` sync; that workflow copies only the exact paths in
-`scripts/sync_template_paths.sh`.
+`scripts/template_paths.txt`.
 
 ## Gates in PRODUCTION mode
 
@@ -128,13 +128,15 @@ the table above — criteria first (done 2026-08-29).
 ## Setup
 
 New project? `bash setup.sh` after cloning — an interactive wizard that
-connects a git remote (GitHub/GitLab/Bitbucket); creates `staging` and `master`
-from the starter commit when the remote does not already have them; installs
-the toolchain (pnpm + Playwright, uv + crawl4ai); writes your first target into
-`targets.yaml` (and the Playwright baseURL); optionally connects Linear
-(validates the API key against api.linear.app and stores it in the gitignored
-`.env`); and prints the command menu. Skippable per-step, safe to re-run;
-it refuses to clobber a customized `targets.yaml` without asking.
+verifies or replaces the existing `origin` (important when cloning the upstream
+`template` branch); requires a human-initialized remote `master`; and creates
+only `staging` from that branch when needed. It never creates or pushes
+`master`. The wizard then installs the toolchain (pnpm + Playwright, uv +
+crawl4ai); writes your first target into `targets.yaml` (and the Playwright
+baseURL); optionally connects Linear (validates the API key against
+api.linear.app and stores it in the gitignored `.env`); and prints the command
+menu. Skippable per-step, safe to re-run; it refuses to clobber a customized
+`targets.yaml` without asking.
 
 ## The Claude Code harness
 
