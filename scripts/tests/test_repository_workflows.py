@@ -56,8 +56,8 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
     _write(repo, "agents/guide.md", "new framework\n")
     _write(repo, "dashboard/server.py", "generic dashboard\n")
     (repo / "dashboard/e2e/current-snapshot.spec.ts").unlink()
-    _write(repo, "dashboard/e2e/vizaeo-only.spec.ts", "project fixture\n")
-    _write(repo, "targets.yaml", "vizaeo-project\n")
+    _write(repo, "dashboard/e2e/project-only.spec.ts", "project fixture\n")
+    _write(repo, "targets.yaml", "project-specific\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-m", "master framework update")
     _git(repo, "switch", "template")
@@ -71,8 +71,25 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
     assert (repo / "agents/guide.md").read_text() == "new framework\n"
     assert (repo / "dashboard/server.py").read_text() == "generic dashboard\n"
     assert not (repo / "dashboard/e2e/current-snapshot.spec.ts").exists()
-    assert not (repo / "dashboard/e2e/vizaeo-only.spec.ts").exists()
+    assert not (repo / "dashboard/e2e/project-only.spec.ts").exists()
     assert (repo / "targets.yaml").read_text() == "template-placeholder\n"
+
+
+def test_template_allowlist_contains_no_project_brand_content():
+    sync_script = (ROOT / "scripts/sync_template_paths.sh").read_text()
+    manifest = sync_script.split("framework_paths=(", 1)[1].split("\n)", 1)[0]
+    allowlisted_paths = [
+        line.strip().strip('"') for line in manifest.splitlines() if line.strip()
+    ]
+    tracked_files = _git_output(ROOT, "ls-files", "--", *allowlisted_paths).splitlines()
+
+    leaking_files = []
+    for relative_path in tracked_files:
+        contents = (ROOT / relative_path).read_text(errors="ignore")
+        if "vi" + "zaeo" in contents.lower():
+            leaking_files.append(relative_path)
+
+    assert leaking_files == []
 
 
 def _write(repo: Path, relative_path: str, contents: str) -> None:
@@ -83,3 +100,9 @@ def _write(repo: Path, relative_path: str, contents: str) -> None:
 
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+
+def _git_output(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout

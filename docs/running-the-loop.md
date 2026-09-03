@@ -78,8 +78,8 @@ Per [spec.md §11](spec.md). Each is a human stop, not a notification:
 Tickets file to whatever the top-level `tracker:` block in `targets.yaml`
 configures (testah is tracker-agnostic; Linear via MCP is the reference
 implementation) — including product bugs found in targets. A target with
-`ticketing: direct` skips the draft step and files immediately; `vizaeo` is
-`draft`.
+`ticketing: direct` skips the draft step and files immediately; the example
+configuration uses `draft`.
 
 Agents never edit `RULES.md` or `targets.yaml`. Both are human-owned law.
 
@@ -104,9 +104,10 @@ lands in **one** end review. Live deviations, and what they cost:
   here on.
 - **The seed failure was deleted 2026-08-29** after triage proved the path;
   the suite is fully green.
-- **Suite runs against live staging.** `playwright.config.ts` defaults
-  `baseURL` to `https://staging.vizaeo.com` and CI passes no env or secrets. It
-  works today because every spec is anonymous and read-only; the first
+- **Suite runs against live staging.** `playwright.config.ts` supplies the
+  repository's example base URL unless `TESTAH_BASE_URL` overrides it. CI
+  passes no env or secrets. It works today because every spec is anonymous
+  and read-only; the first
   authenticated role needs a `*.setup.ts` project and a secrets path that does
   not exist yet (`tests/fixtures/` is empty).
 
@@ -168,7 +169,7 @@ README "Running the agents on your LLM platform").
 files per target in `targets.yaml`:
 
 - **`docs/coverage/<target>.html` — the real map.** Open it in a browser
-  (`open docs/coverage/vizaeo.html`). One section per designated page, one
+  (`open docs/coverage/example.html`). One section per designated page, one
   card per feature, and inside each card the ACTUAL tests that implement it
   (the individual test titles from the last run, each with its own status
   dot). The card's accent says where the feature stands: green passing, red
@@ -219,4 +220,4 @@ Never broadly checkout project-data paths (`targets.yaml`, `page-maps/`,
 `critiques/`, `reviews/`, `flake-history.json`, `changed-pages.json`,
 `docs/plans/`, `docs/review-packet-*`, `docs/coverage/`) onto
 `template`. Only the exact dashboard support files listed above are exceptions;
-Vizaeo paths and other target-specific artifacts remain excluded.
+all target-specific artifacts remain excluded.

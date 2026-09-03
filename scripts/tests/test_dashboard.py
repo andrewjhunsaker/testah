@@ -11,7 +11,7 @@ from dashboard.snapshot import build_snapshot, snapshot_version
 COMPLETED_REPORT = {
     "config": {
         "projects": [
-            {"use": {"baseURL": "https://staging.vizaeo.com"}},
+            {"use": {"baseURL": "https://app.example.test"}},
         ],
     },
     "stats": {
@@ -49,9 +49,9 @@ def fixture_repository(
     repo = tmp_path / "fixture-repository"
     repo.mkdir()
     targets = """targets:
-  vizaeo:
-    name: Vizaeo
-    base_url: https://staging.vizaeo.com
+  example:
+    name: Example target
+    base_url: https://app.example.test
 """
     if target_count == 2:
         targets += """  other:
@@ -112,9 +112,9 @@ def test_current_snapshot_is_built_from_a_fixture_repository(tmp_path):
     assert snapshot["repository"] == {"branch": "master", "commit": commit}
     assert snapshot["targets"] == [
         {
-            "key": "vizaeo",
-            "name": "Vizaeo",
-            "base_url": "https://staging.vizaeo.com",
+            "key": "example",
+            "name": "Example target",
+            "base_url": "https://app.example.test",
             "environment": None,
             "latest_run": {
                 "state": "completed",

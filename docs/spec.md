@@ -30,9 +30,8 @@
 > (`docs/coverage/<target>.html` — self-contained, pan/zoom, real tests per
 > feature — plus a flat `<target>.md` for GitHub, both via
 > `scripts/coverage_map.py`); `template` branch = shareable
-> project-data-free starter (testah is project-agnostic — Vizaeo is just the
-> first target); tickets file to the dedicated Linear WORKSPACE `testah`
-> (linear.app/ah-lineartestagent).
+> project-data-free starter (testah is project-agnostic and ships with a
+> replaceable example target); tickets file through the configured tracker.
 >
 > Status of the v0.4 text below: built and validated 2026-08-28/29.
 > v0.4: named **testah** (personal project); flake threshold 3 with
@@ -63,11 +62,11 @@ or a run produces failures to triage.
 
 | Decision | Resolution |
 |---|---|
-| Home / name | **`testah`** — a standalone generic repo, **personal project** (not under the vizaeo org, not part of vizaeo_mono). Vizaeo is the first entry in `targets.yaml` — the testing ground, not the owner. |
+| Home / name | **`testah`** — a standalone, project-agnostic repository. The first entry in `targets.yaml` is a replaceable testing ground, not the owner. |
 | Harness (agent runtime) | v1: each agent is a Claude Code instruction file / skill in the tool repo — Scout fired on demand by the human, triage fired per CI run. Inter-agent "notification" is a committed artifact — the repo is the mailbox. A later port to the Claude Agent SDK is possible; the artifact contracts don't change. |
 | Ticketing mode | **Draft-for-approval by default**; a per-target `ticketing: direct` toggle enables direct filing later. |
-| Linear project | A **new dedicated Linear project/team** for this tool. ALL tickets (feature, bug, framework) go there for now — including product bugs found in targets. The primary v1 goal is testing the tool itself, with Vizaeo as the proving ground. |
-| Per-target tracker routing | **Later hookup, not v1.** `targets.yaml` reserves an optional `bug_destination` field per target (e.g. route Vizaeo product bugs to the Vizaeo Linear team). Ticket drafts are written tracker-agnostic so this hookup is cheap when wanted. |
+| Linear project | A **dedicated tracker project/team** for this tool. ALL tickets (feature, bug, framework) go there initially — including product bugs found in targets. The primary v1 goal is testing the tool itself with a replaceable proving-ground target. |
+| Per-target tracker routing | **Later hookup, not v1.** `targets.yaml` reserves an optional `bug_destination` field per target (for example, route product bugs to the target team's tracker). Ticket drafts are written tracker-agnostic so this hookup is cheap when wanted. |
 | Scout authentication | Reuse the suite's **storageState** files per role when they exist. When they don't (initial run / new target), the **human provides authentication** during that run (interactive login or supplied session); Scout never stores credentials in the repo. |
 | Distributed systems | No bus/queues/services in v1. Versioned file artifacts in the repo are the message bus; git history is the event log. Contracts are queue-payload-shaped if we ever need real infrastructure. |
 | Load testing | Separate phase-2 agent (**Gauge**, §8), same artifact pattern. Not folded into the Author. |
@@ -283,7 +282,7 @@ documentation. Works **with** the human, never fully autonomously.
      queue.
    - Drafts land in `tickets/drafts/` for one-click human approval; the
      per-target `ticketing: direct` toggle skips the draft step once trusted.
-   - All tickets go to the **dedicated Linear project** (not Vizaeo's).
+   - All tickets go to the **dedicated tracker project**, not a target's tracker.
      Dedup against open tickets; link recurring failures to existing tickets.
 2. **Critic:** periodic review of the whole system — flake-rate trends,
    selector-rot hotspots, coverage gaps between `features.md` and
@@ -360,7 +359,7 @@ flowchart LR
     R --> A1
     R --> A2
     LIN -.prioritized work.-> H
-    VIZ[[Vizaeo staging = first target
+    APP[[Example app = first target
     in targets.yaml]] <-.crawl/test.-> LOOP
 ```
 
