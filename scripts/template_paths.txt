@@ -27,6 +27,7 @@ package.json
 pnpm-lock.yaml
 pyproject.toml
 scripts/__init__.py
+scripts/bootstrap_github_labels.sh
 scripts/bootstrap_release_branches.sh
 scripts/coverage_map.py
 scripts/crawl.py

@@ -74,7 +74,8 @@ prints the command menu. GitHub is currently required for the protected PR,
 Actions, Codex review, and issue workflow. The `template` branch is the clean
 starter. Setup pushes that branch to a replacement project remote; a human then
 creates `master` from the same history before setup creates `staging`. `master`
-carries this repo's own working artifacts.
+carries this repo's own working artifacts. Setup also creates or repairs the
+canonical GitHub triage labels used by the included agent skills.
 
 - **Design:** [docs/spec.md](docs/spec.md)
 - **How to run each pass:** [docs/running-the-loop.md](docs/running-the-loop.md)

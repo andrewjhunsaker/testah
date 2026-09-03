@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import subprocess
 
 
@@ -32,6 +33,7 @@ def test_template_sync_uses_a_versioned_exact_file_manifest():
         "docs/agents/issue-tracker.md",
         "docs/agents/triage-labels.md",
         "docs/agents/domain.md",
+        "scripts/bootstrap_github_labels.sh",
         "scripts/bootstrap_release_branches.sh",
         "scripts/sync_template_paths.sh",
         "scripts/template_paths.txt",
@@ -249,6 +251,45 @@ def test_release_branch_bootstrap_refuses_to_create_master(tmp_path):
     branches = _git_output(repo, "ls-remote", "--heads", "origin")
     assert "refs/heads/master" not in branches
     assert "refs/heads/staging" not in branches
+
+
+def test_setup_provisions_canonical_github_triage_labels(tmp_path):
+    setup = (ROOT / "setup.sh").read_text()
+    label_bootstrap = (ROOT / "scripts/bootstrap_github_labels.sh").read_text()
+
+    assert "bash scripts/bootstrap_github_labels.sh" in setup
+    assert "--force" in label_bootstrap
+    for label in (
+        "needs-triage",
+        "needs-info",
+        "ready-for-agent",
+        "ready-for-human",
+        "wontfix",
+    ):
+        assert f"gh label create {label} " in label_bootstrap
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text(
+        '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$TESTAH_LABEL_LOG"\n'
+    )
+    fake_gh.chmod(0o755)
+    label_log = tmp_path / "labels.log"
+    env = os.environ | {
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "TESTAH_LABEL_LOG": str(label_log),
+    }
+
+    subprocess.run(
+        ["bash", str(ROOT / "scripts/bootstrap_github_labels.sh")],
+        env=env,
+        check=True,
+    )
+
+    calls = label_log.read_text().splitlines()
+    assert len(calls) == 5
+    assert all("label create" in call and "--force" in call for call in calls)
 
 
 def _write(repo: Path, relative_path: str, contents: str) -> None:

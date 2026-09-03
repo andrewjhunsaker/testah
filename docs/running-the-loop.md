@@ -135,11 +135,12 @@ when needed. When replacing `origin`, setup first pushes the allowed `template`
 branch so the human can create `master` from the same history in GitHub. It
 never creates or pushes `master`. GitHub is required for the current PR
 protections, Actions checks, Codex review, and issue workflow. The wizard then
-installs the toolchain (pnpm + Playwright, uv + crawl4ai); writes your first
-target into `targets.yaml` (and the Playwright baseURL); optionally connects
-Linear (validates the API key against api.linear.app and stores it in the
-gitignored `.env`); and prints the command menu. Skippable per-step, safe to
-re-run; it refuses to clobber a customized `targets.yaml` without asking.
+provisions the canonical GitHub triage labels idempotently, installs the
+toolchain (pnpm + Playwright, uv + crawl4ai), writes your first target into
+`targets.yaml` (and the Playwright baseURL), optionally connects Linear
+(validates the API key against api.linear.app and stores it in the gitignored
+`.env`), and prints the command menu. Skippable per-step, safe to re-run; it
+refuses to clobber a customized `targets.yaml` without asking.
 
 ## The Claude Code harness
 

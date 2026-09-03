@@ -69,6 +69,17 @@ if [ "$remote_ready" = y ]; then
     note "template branch. Create it in GitHub, then run:"
     note "bash scripts/bootstrap_release_branches.sh"
   fi
+  if have gh; then
+    if bash scripts/bootstrap_github_labels.sh; then
+      note "canonical GitHub triage labels ready."
+    else
+      note "could not provision triage labels; rerun:"
+      note "bash scripts/bootstrap_github_labels.sh"
+    fi
+  else
+    note "gh is required to provision triage labels later:"
+    note "bash scripts/bootstrap_github_labels.sh"
+  fi
 fi
 
 # ------------------------------------------------------------ 2) toolchain

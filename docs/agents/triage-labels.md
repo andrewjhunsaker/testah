@@ -12,4 +12,8 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 
 When a skill mentions a role, use the corresponding label string from this table.
 
+`bash setup.sh` provisions these labels idempotently for a connected GitHub
+repository. Run `bash scripts/bootstrap_github_labels.sh` to provision or repair
+them separately.
+
 Edit the right-hand column to match whatever vocabulary you actually use.
