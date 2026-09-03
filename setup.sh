@@ -69,6 +69,11 @@ else
 fi
 
 if [ "$remote_ready" = y ]; then
+  if ! git config --replace-all remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; then
+    note "could not widen origin's fetch refspec; repository is not ready."
+    exit 1
+  fi
+
   if have gh; then
     if bash scripts/bootstrap_github_labels.sh; then
       note "canonical GitHub triage labels ready."
@@ -88,6 +93,21 @@ if [ "$remote_ready" = y ]; then
     note "template branch. Create it in GitHub, then run:"
     note "bash setup.sh"
     note "repository is not ready until setup provisions branch protection."
+    exit 1
+  fi
+
+  if ! git fetch origin --prune; then
+    note "could not refresh the project branches; repository is not ready."
+    exit 1
+  fi
+
+  if ! gh repo edit --default-branch master; then
+    note "could not make master the GitHub default branch; repository is not ready."
+    exit 1
+  fi
+  default_branch=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null)
+  if [ "$default_branch" != master ]; then
+    note "GitHub default branch is $default_branch, not master; repository is not ready."
     exit 1
   fi
 

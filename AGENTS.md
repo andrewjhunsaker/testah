@@ -36,8 +36,11 @@ These rules apply to every agent and automation working in this repository.
   its exact allowlist of project-agnostic framework files to `template`; never
   copy target-specific project data there.
 
-GitHub branch protection is the mechanical enforcement layer. These
-instructions remain defense-in-depth and define who may perform each action.
+GitHub branch protection is the mechanical enforcement layer. `master` must be
+the repository default branch, and every required status/check must be bound to
+the GitHub Actions app that produces it rather than trusting a context name
+alone. These instructions remain defense-in-depth and define who may perform
+each action.
 
 ## Code Review Rules
 

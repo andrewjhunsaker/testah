@@ -293,6 +293,11 @@ def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path)
     setup = (ROOT / "setup.sh").read_text()
     assert "Use this as the project remote?" in setup
     assert "git remote set-url origin" in setup
+    assert "git config --replace-all remote.origin.fetch" in setup
+    assert "+refs/heads/*:refs/remotes/origin/*" in setup
+    assert "git fetch origin --prune" in setup
+    assert "gh repo edit --default-branch master" in setup
+    assert "defaultBranchRef" in setup
     normalized_setup = " ".join(setup.split())
     assert (
         'git remote set-url origin "$url" && git push -u origin "$branch"'
@@ -308,6 +313,35 @@ def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path)
     ):
         assert "gitlab" not in project_setup_document.lower()
         assert "bitbucket" not in project_setup_document.lower()
+
+
+def test_setup_fetch_normalization_replaces_multiple_refspecs(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "--initial-branch=template")
+    _git(repo, "remote", "add", "origin", "https://example.test/original.git")
+    _git(
+        repo,
+        "config",
+        "--add",
+        "remote.origin.fetch",
+        "+refs/pull/*/head:refs/remotes/origin/pull/*",
+    )
+
+    subprocess.run(
+        [
+            "git",
+            "config",
+            "--replace-all",
+            "remote.origin.fetch",
+            "+refs/heads/*:refs/remotes/origin/*",
+        ],
+        cwd=repo,
+        check=True,
+    )
+
+    values = _git_output(repo, "config", "--get-all", "remote.origin.fetch")
+    assert values.splitlines() == ["+refs/heads/*:refs/remotes/origin/*"]
 
 
 def test_release_branch_bootstrap_refuses_to_create_master(tmp_path):
@@ -388,10 +422,11 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     assert "branches/staging/protection" in protection_bootstrap
     assert "branches/master/protection" in protection_bootstrap
     assert (
-        '"contexts":["scripts-unit","e2e","dashboard","codex-review"]'
+        '"checks":[{"context":"scripts-unit","app_id":${actions_app_id}}'
         in protection_bootstrap
     )
-    assert '"contexts":["promotion-source"]' in protection_bootstrap
+    assert '"context":"promotion-source","app_id":${actions_app_id}' in protection_bootstrap
+    assert "apps/github-actions" in protection_bootstrap
     assert '"required_approving_review_count":1' in protection_bootstrap
     assert '"dismiss_stale_reviews":true' in protection_bootstrap
     assert '"require_last_push_approval":false' in protection_bootstrap
@@ -408,6 +443,10 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     fake_gh = fake_bin / "gh"
     fake_gh.write_text(
         "#!/usr/bin/env bash\n"
+        'if [[ "$*" == *"apps/github-actions"* ]]; then\n'
+        "  printf '15368\\n'\n"
+        "  exit 0\n"
+        "fi\n"
         'payload=$(cat)\n'
         'printf \'%s|%s\\n\' "$*" "$payload" >> "$TESTAH_PROTECTION_LOG"\n'
     )
@@ -438,15 +477,15 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     staging_payload = json.loads(staging_payload_text)
     master_payload = json.loads(master_payload_text)
     actions_payload = json.loads(actions_payload_text)
-    assert staging_payload["required_status_checks"]["contexts"] == [
-        "scripts-unit",
-        "e2e",
-        "dashboard",
-        "codex-review",
+    assert staging_payload["required_status_checks"]["checks"] == [
+        {"context": "scripts-unit", "app_id": 15368},
+        {"context": "e2e", "app_id": 15368},
+        {"context": "dashboard", "app_id": 15368},
+        {"context": "codex-review", "app_id": 15368},
     ]
     assert master_payload["required_status_checks"] == {
         "strict": False,
-        "contexts": ["promotion-source"],
+        "checks": [{"context": "promotion-source", "app_id": 15368}],
     }
     assert master_payload["required_pull_request_reviews"][
         "required_approving_review_count"

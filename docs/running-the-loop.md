@@ -157,17 +157,19 @@ verifies or replaces the existing `origin` (important when cloning the upstream
 human-initialized remote `master`; and creates only `staging` from that branch
 when needed. When replacing `origin`, setup first pushes the allowed `template`
 branch so the human can create `master` from the same history in GitHub. It
-refuses to create or replace a remote from any other checked-out branch, and it
-never creates or pushes `master`. GitHub is required for the current PR
-protections, Actions checks, Codex review, and issue workflow. The wizard then
-provisions the canonical GitHub triage labels and branch protections
-idempotently. It stops and refuses to report the repository ready if either
-branch is missing or protection cannot be applied. The wizard then installs the
-toolchain (pnpm + Playwright, uv + crawl4ai), writes your first target into
-`targets.yaml` (and the Playwright baseURL), optionally connects Linear
-(validates the API key against api.linear.app and stores it in the gitignored
-`.env`), and prints the command menu. Skippable per-step, safe to re-run; it
-refuses to clobber a customized `targets.yaml` without asking.
+widens `origin` from a single-branch clone to the normal all-branches fetch
+refspec, refreshes the remote-tracking branches, makes `master` the verified
+GitHub default, and never creates or pushes `master`. GitHub is required for the
+current PR protections, Actions checks, Codex review, and issue workflow. The
+wizard then provisions the canonical GitHub triage labels and branch protections
+idempotently, binding every required check to the GitHub Actions app that
+produces it. It stops and refuses to report the repository ready if either
+branch is missing, the default is wrong, or protection cannot be applied. The
+wizard then installs the toolchain (pnpm + Playwright, uv + crawl4ai), writes
+your first target into `targets.yaml` (and the Playwright baseURL), optionally
+connects Linear (validates the API key against api.linear.app and stores it in
+the gitignored `.env`), and prints the command menu. Skippable per-step, safe to
+re-run; it refuses to clobber a customized `targets.yaml` without asking.
 
 ## The Claude Code harness
 

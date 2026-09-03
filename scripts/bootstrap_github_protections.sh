@@ -6,14 +6,20 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+actions_app_id=$(gh api apps/github-actions --jq .id)
+if ! [[ "$actions_app_id" =~ ^[0-9]+$ ]]; then
+  echo "could not resolve the GitHub Actions app id" >&2
+  exit 1
+fi
+
 gh api --method PUT "repos/{owner}/{repo}/branches/staging/protection" \
-  --input - >/dev/null <<'JSON'
-{"required_status_checks":{"strict":true,"contexts":["scripts-unit","e2e","dashboard","codex-review"]},"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":0,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
+  --input - >/dev/null <<JSON
+{"required_status_checks":{"strict":true,"checks":[{"context":"scripts-unit","app_id":${actions_app_id}},{"context":"e2e","app_id":${actions_app_id}},{"context":"dashboard","app_id":${actions_app_id}},{"context":"codex-review","app_id":${actions_app_id}}]},"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":0,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
 JSON
 
 gh api --method PUT "repos/{owner}/{repo}/branches/master/protection" \
-  --input - >/dev/null <<'JSON'
-{"required_status_checks":{"strict":false,"contexts":["promotion-source"]},"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"required_approving_review_count":1,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
+  --input - >/dev/null <<JSON
+{"required_status_checks":{"strict":false,"checks":[{"context":"promotion-source","app_id":${actions_app_id}}]},"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"required_approving_review_count":1,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
 JSON
 
 gh api --method PUT "repos/{owner}/{repo}/actions/permissions/workflow" \
