@@ -8,12 +8,12 @@ fi
 
 gh api --method PUT "repos/{owner}/{repo}/branches/staging/protection" \
   --input - >/dev/null <<'JSON'
-{"required_status_checks":{"strict":true,"contexts":["scripts-unit","e2e","dashboard"]},"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":0,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
+{"required_status_checks":{"strict":true,"contexts":["scripts-unit","e2e","dashboard","codex-review"]},"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":0,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
 JSON
 
 gh api --method PUT "repos/{owner}/{repo}/branches/master/protection" \
   --input - >/dev/null <<'JSON'
-{"required_status_checks":null,"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":1,"require_last_push_approval":false},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
+{"required_status_checks":null,"enforce_admins":true,"required_pull_request_reviews":{"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"required_approving_review_count":1,"require_last_push_approval":true},"restrictions":null,"required_linear_history":true,"allow_force_pushes":false,"allow_deletions":false,"required_conversation_resolution":true}
 JSON
 
 gh api --method PUT "repos/{owner}/{repo}/actions/permissions/workflow" \

@@ -20,6 +20,22 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "dashboard config was removed" in workflow
 
 
+def test_codex_review_gate_runs_only_trusted_workflow_code():
+    workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
+
+    assert "pull_request_target:" in workflow
+    assert "branches: [staging]" in workflow
+    assert "\n  codex-review:\n" in workflow
+    assert "actions/checkout" not in workflow
+    assert "github.event.pull_request.head.sha" in workflow
+    assert "chatgpt-codex-connector[bot]" in workflow
+    assert "pull_request_review_id" in workflow
+    assert "finding(s)" in workflow
+    assert workflow.count("--paginate --slurp | jq") == 2
+    assert "--arg head_sha" in workflow
+    assert "--argjson review_id" in workflow
+
+
 def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     workflow = (ROOT / ".github/workflows/promotion-pr.yml").read_text()
 
@@ -48,6 +64,7 @@ def test_template_sync_uses_a_versioned_exact_file_manifest():
         "docs/agents/issue-tracker.md",
         "docs/agents/triage-labels.md",
         "docs/agents/domain.md",
+        ".github/workflows/codex-review.yml",
         ".github/workflows/promotion-pr.yml",
         "scripts/bootstrap_github_labels.sh",
         "scripts/bootstrap_github_protections.sh",
@@ -94,6 +111,8 @@ def test_agent_harness_requires_staged_human_gated_delivery():
     assert "@codex review" in agents
     assert "one Codex review gate" in agents
     assert "follow-up review" in agents
+    assert "One-time migration exception" in agents
+    assert "No exception exists after" in agents
     normalized_procedure = " ".join(operating_procedure.split())
     assert "does not rerun CI or request another Codex review" in normalized_procedure
 
@@ -321,9 +340,14 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     assert "repository is not ready" in setup
     assert "branches/staging/protection" in protection_bootstrap
     assert "branches/master/protection" in protection_bootstrap
-    assert '"contexts":["scripts-unit","e2e","dashboard"]' in protection_bootstrap
+    assert (
+        '"contexts":["scripts-unit","e2e","dashboard","codex-review"]'
+        in protection_bootstrap
+    )
     assert '"required_status_checks":null' in protection_bootstrap
     assert '"required_approving_review_count":1' in protection_bootstrap
+    assert '"dismiss_stale_reviews":true' in protection_bootstrap
+    assert '"require_last_push_approval":true' in protection_bootstrap
     assert "actions/permissions/workflow" in protection_bootstrap
     assert '"can_approve_pull_request_reviews":true' in protection_bootstrap
     assert protection_bootstrap.count('"enforce_admins":true') == 2
@@ -371,11 +395,18 @@ def test_setup_provisions_github_branch_protection(tmp_path):
         "scripts-unit",
         "e2e",
         "dashboard",
+        "codex-review",
     ]
     assert master_payload["required_status_checks"] is None
     assert master_payload["required_pull_request_reviews"][
         "required_approving_review_count"
     ] == 1
+    assert master_payload["required_pull_request_reviews"][
+        "dismiss_stale_reviews"
+    ] is True
+    assert master_payload["required_pull_request_reviews"][
+        "require_last_push_approval"
+    ] is True
     assert actions_payload == {
         "default_workflow_permissions": "read",
         "can_approve_pull_request_reviews": True,

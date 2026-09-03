@@ -63,7 +63,16 @@ through a PR. GitHub branch protection rejects direct pushes to `staging` and
 requires the `scripts-unit`, `e2e`, and `dashboard` checks. Once those checks
 pass, request `@codex review`; address consequential findings and request a
 follow-up review when they require a new commit. The agent may merge the PR into
-`staging` only after the current commit is clean.
+`staging` only after the required `codex-review` status confirms that the exact
+head SHA has a Codex review with no inline findings.
+
+For an existing repository migrating to this gate, the first PR that introduces
+the trusted `pull_request_target` workflow cannot emit its own required status:
+GitHub loads that workflow from the default branch, where it does not exist yet.
+Verify the exact-head Codex review manually for that one PR and retain the human
+promotion gate. Once the workflow reaches `master`, the exception is gone.
+Repositories initialized from `template` have the workflow in their first
+human-created `master` and never need this migration exception.
 
 Each merge to `staging` makes `.github/workflows/promotion-pr.yml` open a
 bot-authored draft promotion PR to `master`, or leave the existing one tracking
@@ -72,9 +81,10 @@ locally, an agent may mark that draft ready and must stop. GitHub branch
 protection rejects direct pushes to `master`, including administrator pushes,
 and requires one approval. Because the PR author is `github-actions[bot]`, the
 human owner can approve it; an agent operating as that owner cannot substitute
-an unreviewed self-authored promotion. The promotion does not rerun CI or
-request another Codex review: those gates already ran on the constituent
-staging PRs.
+an unreviewed self-authored promotion. A new staging commit dismisses an older
+approval and requires the human to approve the latest head. The promotion does
+not rerun CI or request another Codex review: those gates already ran on the
+constituent staging PRs.
 
 The merge to `master` is the validated release event. It triggers the
 project-data-free `template` sync; that workflow copies only the exact paths in

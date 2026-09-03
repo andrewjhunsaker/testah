@@ -1,0 +1,45 @@
+name: codex-review
+
+on:
+  pull_request_target:
+    branches: [staging]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  codex-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Require a clean Codex review of this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          deadline=$((SECONDS + 1500))
+          while (( SECONDS <= deadline )); do
+            review_id=$(gh api \
+              "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews?per_page=100" \
+              --paginate --slurp | jq -r --arg head_sha "$HEAD_SHA" \
+              '[.[][] | select(.user.login == "chatgpt-codex-connector[bot]" and .commit_id == $head_sha)] | last | .id // empty')
+            if [ -n "$review_id" ]; then
+              finding_count=$(gh api \
+                "repos/${REPOSITORY}/pulls/${PR_NUMBER}/comments?per_page=100" \
+                --paginate --slurp | jq --argjson review_id "$review_id" \
+                '[.[][] | select(.pull_request_review_id == $review_id)] | length')
+              if [ "$finding_count" -eq 0 ]; then
+                echo "clean Codex review found for ${HEAD_SHA}"
+                exit 0
+              fi
+              echo "Codex review for ${HEAD_SHA} has ${finding_count} finding(s)" >&2
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "timed out waiting for a Codex review of ${HEAD_SHA}" >&2
+          exit 1

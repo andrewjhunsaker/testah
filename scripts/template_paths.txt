@@ -7,6 +7,7 @@
 .claude/skills/scout/SKILL.md
 .claude/skills/steward/SKILL.md
 .claude/skills/triage/SKILL.md
+.github/workflows/codex-review.yml
 .github/workflows/template-sync.yml
 .github/workflows/tests.yml
 .github/workflows/promotion-pr.yml
