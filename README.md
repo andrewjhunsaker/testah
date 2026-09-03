@@ -9,8 +9,6 @@ Playwright suite, triage every failure, and draft the right tickets — while a
 human approves every consequential step. The suite it produces is plain
 `npx playwright test`: deterministic, CI-friendly, no LLM at runtime.
 
-![tests](https://github.com/andrewjhunsaker/testah/actions/workflows/tests.yml/badge.svg)
-
 ## How it works
 
 ```mermaid

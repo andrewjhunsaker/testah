@@ -110,9 +110,8 @@ lands in **one** end review. Live deviations, and what they cost:
 - **No per-ticket approval yet.** All drafts sit at `status: draft`; the
   Linear **workspace** `testah` exists (linear.app/ah-lineartestagent) but
   the MCP session must be OAuth'd to it before the Steward can file.
-- **Remote exists since 2026-08-29** (github.com/andrewjhunsaker/testah);
-  branch-and-PR discipline (`scout/<date>`, `author/<date>`) applies from
-  here on.
+- **A git remote is configured**; branch-and-PR discipline
+  (`scout/<date>`, `author/<date>`) applies from here on.
 - **The seed failure was deleted 2026-08-29** after triage proved the path;
   the suite is fully green.
 - **Suite runs against live staging.** `playwright.config.ts` supplies the

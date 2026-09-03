@@ -26,6 +26,9 @@ def test_template_sync_includes_generic_dashboard_files_only():
 
     for path in (
         "AGENTS.md",
+        "docs/agents/issue-tracker.md",
+        "docs/agents/triage-labels.md",
+        "docs/agents/domain.md",
         "dashboard/server.py",
         "dashboard/e2e/current-snapshot.spec.ts",
         "dashboard.playwright.config.ts",
@@ -36,9 +39,16 @@ def test_template_sync_includes_generic_dashboard_files_only():
     ):
         assert path in sync_script
 
-    assert '"dashboard"' not in sync_script
-    assert '"page-maps"' not in sync_script
-    assert '"requirements"' not in sync_script
+    for broad_directory in (
+        "agents",
+        "scripts",
+        ".github",
+        ".claude",
+        "dashboard",
+        "page-maps",
+        "requirements",
+    ):
+        assert f'  "{broad_directory}"\n' not in sync_script
 
 
 def test_agent_harness_requires_staged_human_gated_delivery():
@@ -59,6 +69,23 @@ def test_agent_harness_requires_staged_human_gated_delivery():
     assert "does not rerun CI or request another Codex review" in normalized_procedure
 
 
+def test_template_issue_tracker_instructions_resolve_repo_from_git_remote():
+    claude = (ROOT / "CLAUDE.md").read_text()
+    tracker_guide = (ROOT / "docs/agents/issue-tracker.md").read_text()
+
+    assert "andrewjhunsaker/testah" not in claude
+    assert "andrewjhunsaker/testah" not in tracker_guide
+    assert "git remote" in tracker_guide
+
+    leaking_docs = []
+    for relative_path in _allowlisted_paths():
+        path = ROOT / relative_path
+        if path.suffix == ".md" and path.is_file():
+            if "andrewjhunsaker/testah" in path.read_text(errors="ignore"):
+                leaking_docs.append(relative_path)
+    assert leaking_docs == []
+
+
 def test_template_sync_propagates_deletions_without_copying_project_data(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -66,14 +93,15 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
     _git(repo, "config", "user.name", "Workflow Test")
     _git(repo, "config", "user.email", "workflow@example.test")
 
-    _write(repo, "agents/guide.md", "old framework\n")
+    _write(repo, "agents/scout.md", "old framework\n")
     _write(repo, "dashboard/e2e/current-snapshot.spec.ts", "stale test\n")
     _write(repo, "targets.yaml", "template-placeholder\n")
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "template base")
     _git(repo, "branch", "template")
 
-    _write(repo, "agents/guide.md", "new framework\n")
+    _write(repo, "agents/scout.md", "new framework\n")
+    _write(repo, "agents/project-only.md", "project-specific agent\n")
     _write(repo, "dashboard/server.py", "generic dashboard\n")
     (repo / "dashboard/e2e/current-snapshot.spec.ts").unlink()
     _write(repo, "dashboard/e2e/project-only.spec.ts", "project fixture\n")
@@ -88,7 +116,8 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
         check=True,
     )
 
-    assert (repo / "agents/guide.md").read_text() == "new framework\n"
+    assert (repo / "agents/scout.md").read_text() == "new framework\n"
+    assert not (repo / "agents/project-only.md").exists()
     assert (repo / "dashboard/server.py").read_text() == "generic dashboard\n"
     assert not (repo / "dashboard/e2e/current-snapshot.spec.ts").exists()
     assert not (repo / "dashboard/e2e/project-only.spec.ts").exists()
@@ -96,11 +125,7 @@ def test_template_sync_propagates_deletions_without_copying_project_data(tmp_pat
 
 
 def test_template_allowlist_contains_no_project_brand_content():
-    sync_script = (ROOT / "scripts/sync_template_paths.sh").read_text()
-    manifest = sync_script.split("framework_paths=(", 1)[1].split("\n)", 1)[0]
-    allowlisted_paths = [
-        line.strip().strip('"') for line in manifest.splitlines() if line.strip()
-    ]
+    allowlisted_paths = _allowlisted_paths()
     tracked_files = _git_output(ROOT, "ls-files", "--", *allowlisted_paths).splitlines()
 
     leaking_files = []
@@ -110,6 +135,12 @@ def test_template_allowlist_contains_no_project_brand_content():
             leaking_files.append(relative_path)
 
     assert leaking_files == []
+
+
+def _allowlisted_paths() -> list[str]:
+    sync_script = (ROOT / "scripts/sync_template_paths.sh").read_text()
+    manifest = sync_script.split("framework_paths=(", 1)[1].split("\n)", 1)[0]
+    return [line.strip().strip('"') for line in manifest.splitlines() if line.strip()]
 
 
 def _write(repo: Path, relative_path: str, contents: str) -> None:

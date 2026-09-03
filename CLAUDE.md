@@ -38,7 +38,8 @@ the message bus; the human gates every consequential step.
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues for `andrewjhunsaker/testah`. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues for the repository identified by
+`git remote`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

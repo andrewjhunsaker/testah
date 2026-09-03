@@ -1,6 +1,7 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Issues and specs live as GitHub issues in the repository identified by
+`git remote`. Use the `gh` CLI for all operations.
 
 ## Conventions
 
