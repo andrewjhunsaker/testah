@@ -4,42 +4,72 @@ on:
   pull_request_target:
     branches: [staging]
     types: [opened, reopened, synchronize]
+  pull_request_review:
+    branches: [staging]
+    types: [submitted]
 
 permissions:
   contents: read
   pull-requests: read
+  statuses: write
 
 jobs:
   codex-review:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      github.event.review.user.login == 'chatgpt-codex-connector[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - name: Require a clean Codex review of this exact commit
+      - name: Publish the exact-head Codex review status
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_REVIEWED_SHA: ${{ github.event.review.commit_id }}
+          EVENT_REVIEW_ID: ${{ github.event.review.id }}
+          CODEX_LOGIN: chatgpt-codex-connector[bot]
         run: |
-          deadline=$((SECONDS + 1500))
-          while (( SECONDS <= deadline )); do
-            review_id=$(gh api \
+          if [ "$EVENT_NAME" = "pull_request_target" ]; then
+            gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+              -f state=pending \
+              -f context=codex-review \
+              -f description='Waiting for Codex review of this commit'
+
+            # A review can arrive before this workflow run starts. Reconcile it
+            # after writing pending so pending can never be the final state.
+            REVIEW_ID=$(gh api \
               "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews?per_page=100" \
-              --paginate --slurp | jq -r --arg head_sha "$HEAD_SHA" \
-              '[.[][] | select(.user.login == "chatgpt-codex-connector[bot]" and .commit_id == $head_sha)] | last | .id // empty')
-            if [ -n "$review_id" ]; then
-              finding_count=$(gh api \
-                "repos/${REPOSITORY}/pulls/${PR_NUMBER}/comments?per_page=100" \
-                --paginate --slurp | jq --argjson review_id "$review_id" \
-                '[.[][] | select(.pull_request_review_id == $review_id)] | length')
-              if [ "$finding_count" -eq 0 ]; then
-                echo "clean Codex review found for ${HEAD_SHA}"
-                exit 0
-              fi
-              echo "Codex review for ${HEAD_SHA} has ${finding_count} finding(s)" >&2
-              exit 1
+              --paginate --slurp | jq -r \
+              --arg codex_login "$CODEX_LOGIN" --arg head_sha "$HEAD_SHA" \
+              '[.[][] | select(.user.login == $codex_login and .commit_id == $head_sha)] | last | .id // empty')
+            if [ -z "$REVIEW_ID" ]; then
+              exit 0
             fi
-            sleep 15
-          done
-          echo "timed out waiting for a Codex review of ${HEAD_SHA}" >&2
+          else
+            if [ "$EVENT_REVIEWED_SHA" != "$HEAD_SHA" ]; then
+              echo "ignoring Codex review of stale commit ${EVENT_REVIEWED_SHA}"
+              exit 0
+            fi
+            REVIEW_ID="$EVENT_REVIEW_ID"
+          fi
+
+          finding_count=$(gh api \
+            "repos/${REPOSITORY}/pulls/${PR_NUMBER}/comments?per_page=100" \
+            --paginate --slurp | jq --argjson review_id "$REVIEW_ID" \
+            '[.[][] | select(.pull_request_review_id == $review_id)] | length')
+
+          if [ "$finding_count" -eq 0 ]; then
+            gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+              -f state=success \
+              -f context=codex-review \
+              -f description='Codex review is clean for this commit'
+            exit 0
+          fi
+
+          gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state=failure \
+            -f context=codex-review \
+            -f description="Codex review has ${finding_count} finding(s)"
           exit 1

@@ -15,7 +15,9 @@ These rules apply to every agent and automation working in this repository.
 - Each merge to `staging` makes GitHub Actions open or update a bot-authored
   draft promotion PR into `master`. After local validation, an agent may mark
   that PR ready and must stop. A human must approve the latest staging head and
-  merge it; new staging commits dismiss the prior approval.
+  merge it; new staging commits dismiss the prior approval. Do not require a
+  different last-push approver: agent staging merges use the human owner's
+  GitHub identity, and stale-review dismissal already refreshes the gate.
 - Do not rerun CI or request another Codex review on the promotion PR. Its
   contents were already gated on their staging PRs.
 - One-time migration exception: an existing repository's first PR introducing

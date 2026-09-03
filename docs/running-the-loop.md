@@ -82,9 +82,11 @@ protection rejects direct pushes to `master`, including administrator pushes,
 and requires one approval. Because the PR author is `github-actions[bot]`, the
 human owner can approve it; an agent operating as that owner cannot substitute
 an unreviewed self-authored promotion. A new staging commit dismisses an older
-approval and requires the human to approve the latest head. The promotion does
-not rerun CI or request another Codex review: those gates already ran on the
-constituent staging PRs.
+approval and requires the human to approve the latest head. The separate
+last-push-approval option stays off because agent staging merges use the human
+owner's GitHub identity and would otherwise disqualify that sole owner. The
+promotion does not rerun CI or request another Codex review: those gates already
+ran on the constituent staging PRs.
 
 The merge to `master` is the validated release event. It triggers the
 project-data-free `template` sync; that workflow copies only the exact paths in

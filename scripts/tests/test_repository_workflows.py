@@ -24,15 +24,28 @@ def test_codex_review_gate_runs_only_trusted_workflow_code():
     workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
 
     assert "pull_request_target:" in workflow
+    assert "pull_request_review:" in workflow
+    assert "types: [submitted]" in workflow
     assert "branches: [staging]" in workflow
     assert "\n  codex-review:\n" in workflow
     assert "actions/checkout" not in workflow
+    assert "statuses: write" in workflow
     assert "github.event.pull_request.head.sha" in workflow
+    assert "github.event.review.commit_id" in workflow
+    assert "github.event.review.id" in workflow
     assert "chatgpt-codex-connector[bot]" in workflow
     assert "pull_request_review_id" in workflow
-    assert "finding(s)" in workflow
+    assert "statuses/${HEAD_SHA}" in workflow
+    assert "state=pending" in workflow
+    assert "state=success" in workflow
+    assert "state=failure" in workflow
     assert workflow.count("--paginate --slurp | jq") == 2
-    assert "--arg head_sha" in workflow
+    assert "pulls/${PR_NUMBER}/reviews?per_page=100" in workflow
+    assert 'select(.user.login == $codex_login and .commit_id == $head_sha)' in workflow
+    assert "| last | .id // empty" in workflow
+    assert workflow.index("-f state=pending") < workflow.index(
+        "pulls/${PR_NUMBER}/reviews?per_page=100"
+    )
     assert "--argjson review_id" in workflow
 
 
@@ -347,7 +360,7 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     assert '"required_status_checks":null' in protection_bootstrap
     assert '"required_approving_review_count":1' in protection_bootstrap
     assert '"dismiss_stale_reviews":true' in protection_bootstrap
-    assert '"require_last_push_approval":true' in protection_bootstrap
+    assert '"require_last_push_approval":false' in protection_bootstrap
     assert "actions/permissions/workflow" in protection_bootstrap
     assert '"can_approve_pull_request_reviews":true' in protection_bootstrap
     assert protection_bootstrap.count('"enforce_admins":true') == 2
@@ -406,7 +419,7 @@ def test_setup_provisions_github_branch_protection(tmp_path):
     ] is True
     assert master_payload["required_pull_request_reviews"][
         "require_last_push_approval"
-    ] is True
+    ] is False
     assert actions_payload == {
         "default_workflow_permissions": "read",
         "can_approve_pull_request_reviews": True,
