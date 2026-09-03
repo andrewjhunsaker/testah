@@ -72,7 +72,9 @@ One command, a few questions: connect a GitHub project remote, install
 dependencies, point testah at your site, optionally connect Linear — then it
 prints the command menu. GitHub is currently required for the protected PR,
 Actions, Codex review, and issue workflow. The `template` branch is the clean
-starter; `master` carries this repo's own working artifacts.
+starter. Setup pushes that branch to a replacement project remote; a human then
+creates `master` from the same history before setup creates `staging`. `master`
+carries this repo's own working artifacts.
 
 - **Design:** [docs/spec.md](docs/spec.md)
 - **How to run each pass:** [docs/running-the-loop.md](docs/running-the-loop.md)

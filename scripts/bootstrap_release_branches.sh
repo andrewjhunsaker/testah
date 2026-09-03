@@ -8,7 +8,7 @@ fi
 
 if ! git ls-remote --exit-code --heads origin refs/heads/master \
   >/dev/null 2>&1; then
-  echo "origin needs a human-initialized master branch; staging was not created" >&2
+  echo "origin needs a human-initialized master based on its template branch; staging was not created" >&2
   exit 1
 fi
 

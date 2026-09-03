@@ -36,7 +36,8 @@ if git remote get-url origin >/dev/null 2>&1; then
   else
     read -r -p "  Correct project remote URL (blank to skip): " url
     if [ -n "$url" ]; then
-      git remote set-url origin "$url" && remote_ready=y
+      git remote set-url origin "$url" && git push -u origin "$branch" \
+        && remote_ready=y
     else
       note "remote setup skipped; origin was left unchanged."
     fi
@@ -64,8 +65,9 @@ if [ "$remote_ready" = y ]; then
   if bash scripts/bootstrap_release_branches.sh; then
     note "staging ready: feature PRs -> staging -> human-approved master."
   else
-    note "staging needs a human-initialized remote master. Create master in"
-    note "your git host, then run: bash scripts/bootstrap_release_branches.sh"
+    note "staging needs a human-initialized remote master based on the pushed"
+    note "template branch. Create it in GitHub, then run:"
+    note "bash scripts/bootstrap_release_branches.sh"
   fi
 fi
 

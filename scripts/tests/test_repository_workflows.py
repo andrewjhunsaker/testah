@@ -14,6 +14,8 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "pnpm dashboard:typecheck" in workflow
     assert "pnpm test:dashboard" in workflow
     assert "dashboard.playwright.config.ts" in workflow
+    assert "github.event.pull_request.base.sha" in workflow
+    assert "dashboard config was removed" in workflow
 
 
 def test_template_sync_uses_a_versioned_exact_file_manifest():
@@ -206,6 +208,11 @@ def test_release_branch_bootstrap_creates_staging_from_existing_master(tmp_path)
     setup = (ROOT / "setup.sh").read_text()
     assert "Use this as the project remote?" in setup
     assert "git remote set-url origin" in setup
+    normalized_setup = " ".join(setup.split())
+    assert (
+        'git remote set-url origin "$url" && git push -u origin "$branch"'
+        in normalized_setup
+    )
     assert "[github/skip]" in setup
     for project_setup_document in (
         setup,
