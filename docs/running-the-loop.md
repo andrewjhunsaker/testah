@@ -61,8 +61,9 @@ typecheck and loopback-browser suite. `e2e` uploads `reports/` as the
 Feature and framework work must start on a feature branch and enter `staging`
 through a PR. GitHub branch protection rejects direct pushes to `staging` and
 requires the `scripts-unit`, `e2e`, and `dashboard` checks. Once those checks
-pass, request `@codex review` exactly once; address consequential findings, then
-the agent may merge the PR into `staging`.
+pass, request `@codex review`; address consequential findings and request a
+follow-up review when they require a new commit. The agent may merge the PR into
+`staging` only after the current commit is clean.
 
 After the combined branch has been exercised locally, open a promotion PR from
 `staging` to `master` and stop. GitHub branch protection rejects direct pushes

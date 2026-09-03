@@ -64,7 +64,8 @@ def test_agent_harness_requires_staged_human_gated_delivery():
 
     assert "## Code Review Rules" in agents
     assert "@codex review" in agents
-    assert "exactly once" in agents
+    assert "one Codex review gate" in agents
+    assert "follow-up review" in agents
     normalized_procedure = " ".join(operating_procedure.split())
     assert "does not rerun CI or request another Codex review" in normalized_procedure
 

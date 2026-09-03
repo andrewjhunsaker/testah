@@ -7,8 +7,10 @@ These rules apply to every agent and automation working in this repository.
 - Make changes on a feature branch and open a pull request into `staging`.
 - Never push directly to `master`. Never merge a pull request into `master`.
 - Wait for the staging PR's required CI jobs to pass.
-- Request `@codex review` exactly once on each staging PR. Address consequential
-  findings before merging the PR into `staging`.
+- Use one Codex review gate on each staging PR: request `@codex review` after
+  CI passes. Address consequential findings and request a follow-up review only
+  when the reviewed commit must change. Merge only after the current commit is
+  clean.
 - When `staging` is ready to release, open a promotion PR from `staging` into
   `master` and stop. A human must inspect and merge that PR.
 - Do not rerun CI or request another Codex review on the promotion PR. Its
