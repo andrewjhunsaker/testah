@@ -16,7 +16,7 @@ Run every command from the repo root.
 | 1 | **Scout** — `agents/scout.md` | human, on demand | `targets.yaml`, existing `page-maps/` | `page-maps/<target>/<slug>/{page.md,page.json,features.md,perf.json,meta.json}`, `changed-pages.json`, `tickets/drafts/*.md` (`type: test-feature`) |
 | 2 | **Author Mode A** — `agents/author.md` | human, after the Scout gate | page-maps, `changed-pages.json`, `RULES.md`, approved feature tickets | `requirements/<target>/<slug>/<feature>.md`, `tests/pages/*.ts`, `tests/specs/*.spec.ts` |
 | 2R | **Reviewer** — `agents/reviewer.md` | the Author, as a **fresh subagent** | the Author's diff, `requirements/`, `RULES.md` | `reviews/<date>.md` (`-2`, `-3` for repeat rounds) |
-| 3 | **Agentless run** — `pnpm exec playwright test` | CI on push/PR, or a human locally | `tests/`, `playwright.config.ts` | `reports/last-run.json`, `reports/html/` (both gitignored) |
+| 3 | **Agentless run** — `pnpm exec playwright test` | CI on PRs into `staging`, or a human locally | `tests/`, `playwright.config.ts` | `reports/last-run.json`, `reports/html/` (both gitignored) |
 | 4 | **Author Mode B** — `agents/author.md` | human, per run that produced failures | `reports/last-run.json`, traces, page-map history, git log | `triage/<run-id>.md`, `flake-history.json`, `docs/coverage/<target>.{html,md}` (regenerated) |
 | 5 | **Steward** — `agents/steward.md` | human, after triage | triage, reviews, page-maps, `features.md`, drafts, `flake-history.json` | `tickets/drafts/*.md` (`product-bug` / `framework-update`), `critiques/<date>.md`, `docs/` |
 
@@ -51,17 +51,28 @@ results in the last 10 runs**; silence means no crossing. It is idempotent —
 reprocessing the same report under the same run-id does not double-count.
 
 CI is `.github/workflows/tests.yml`: `scripts-unit` (pytest) and `e2e`
-(Playwright, chromium), on pushes to `staging` and `master` and on every PR.
+(Playwright, chromium), on pull requests targeting `staging` only.
 When the generic dashboard is present, the separate `dashboard` job runs its
 typecheck and loopback-browser suite. `e2e` uploads `reports/` as the
 `playwright-report` artifact even on failure — that artifact is Mode B's input.
 
 ## Staging promotion
 
-Feature and framework PRs land on `staging` first. After the combined branch is
-green and has been exercised locally, promote it with a PR from `staging` to
-`master`; the human remains the merge gate. A push to `master` is therefore a
-validated release event and triggers the project-data-free `template` sync.
+Feature and framework work must start on a feature branch and enter `staging`
+through a PR. GitHub branch protection rejects direct pushes to `staging` and
+requires the `scripts-unit`, `e2e`, and `dashboard` checks. Once those checks
+pass, request `@codex review` exactly once; address consequential findings, then
+the agent may merge the PR into `staging`.
+
+After the combined branch has been exercised locally, open a promotion PR from
+`staging` to `master` and stop. GitHub branch protection rejects direct pushes
+to `master`, including administrator pushes, and requires the PR path. A human
+must inspect and merge this promotion PR. It does not rerun CI or request
+another Codex review: those gates already ran on the constituent staging PRs.
+
+The merge to `master` is the validated release event. It triggers the
+project-data-free `template` sync; that workflow copies only the exact paths in
+`scripts/sync_template_paths.sh`.
 
 ## Gates in PRODUCTION mode
 
@@ -156,9 +167,13 @@ configuration for it (`CLAUDE.md` + `.claude/`). Everything in it POINTS at
   toolchain).
 - **Personal overrides** go in `.claude/settings.local.json` (gitignored) —
   never in the committed settings.
+- **Delivery guardrails** (`AGENTS.md` plus GitHub branch protection): agents
+  work through feature PRs into `staging`, request one Codex review there, and
+  stop at the human-only `staging` → `master` promotion PR. Direct pushes to
+  both protected branches are mechanically rejected.
 - **Standing rule:** any harness change updates THIS section in the same
-  commit, and framework paths (including `.claude/` and `CLAUDE.md`) sync to
-  the `template` branch automatically.
+  commit, and framework paths (including `.claude/`, `AGENTS.md`, and
+  `CLAUDE.md`) sync to the `template` branch automatically.
 
 Other LLM harnesses ignore all of this and use `agents/*.md` directly (see
 README "Running the agents on your LLM platform").
@@ -200,8 +215,8 @@ flake-history. New adopters clone it and point `targets.yaml` at their app.
 
 Maintenance is AUTOMATED: `.github/workflows/template-sync.yml` runs on
 every push to `master` and checks out only framework paths onto `template`
-(agents, scripts, dashboard, .github, .mcp.json, package/lock files, RULES.md,
-README, `docs/spec.md`, `docs/running-the-loop.md`, and the dashboard's exact
+(agents, scripts, dashboard, .github, AGENTS.md, .mcp.json, package/lock files,
+RULES.md, README, `docs/spec.md`, `docs/running-the-loop.md`, and the dashboard's exact
 POM/requirement/page map).
 Manual fallback, same paths after the dashboard exists:
 

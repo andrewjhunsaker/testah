@@ -5,10 +5,11 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_ci_runs_on_staging_and_exercises_the_dashboard_when_present():
+def test_ci_runs_once_on_pull_requests_into_staging():
     workflow = (ROOT / ".github/workflows/tests.yml").read_text()
 
-    assert "branches: [master, staging]" in workflow
+    assert "pull_request:\n    branches: [staging]" in workflow
+    assert "\n  push:" not in workflow
     assert "\n  dashboard:\n" in workflow
     assert "pnpm dashboard:typecheck" in workflow
     assert "pnpm test:dashboard" in workflow
@@ -24,6 +25,7 @@ def test_template_sync_includes_generic_dashboard_files_only():
     assert "git cat-file -e" in sync_script
 
     for path in (
+        "AGENTS.md",
         "dashboard/server.py",
         "dashboard/e2e/current-snapshot.spec.ts",
         "dashboard.playwright.config.ts",
@@ -37,6 +39,24 @@ def test_template_sync_includes_generic_dashboard_files_only():
     assert '"dashboard"' not in sync_script
     assert '"page-maps"' not in sync_script
     assert '"requirements"' not in sync_script
+
+
+def test_agent_harness_requires_staged_human_gated_delivery():
+    agents = (ROOT / "AGENTS.md").read_text()
+    claude = (ROOT / "CLAUDE.md").read_text()
+    operating_procedure = (ROOT / "docs/running-the-loop.md").read_text()
+
+    for contents in (agents, claude):
+        assert "Never push directly to `master`" in contents
+        assert "feature branch" in contents
+        assert "`staging`" in contents
+        assert "human" in contents.lower()
+
+    assert "## Code Review Rules" in agents
+    assert "@codex review" in agents
+    assert "exactly once" in agents
+    normalized_procedure = " ".join(operating_procedure.split())
+    assert "does not rerun CI or request another Codex review" in normalized_procedure
 
 
 def test_template_sync_propagates_deletions_without_copying_project_data(tmp_path):

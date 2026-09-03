@@ -9,6 +9,7 @@ framework_paths=(
   "scripts"
   ".github"
   ".claude"
+  "AGENTS.md"
   "CLAUDE.md"
   "setup.sh"
   ".mcp.json"

@@ -11,8 +11,12 @@ the message bus; the human gates every consequential step.
   agents never edit them (permission ask-gates enforce this; do not work
   around them via Bash).
 - No AI attribution in commits or PRs.
-- Branch per pass (`scout/<date>`, `author/<date>`, ISO dates) and open a
-  PR; the human merges.
+- Work on a feature branch (`scout/<date>`, `author/<date>`, or another
+  descriptive name) and open a PR into `staging`.
+- Never push directly to `master`. Never merge into `master`: open a
+  `staging` → `master` promotion PR and stop for the human to merge it.
+- Follow the delivery and review policy in `AGENTS.md`, including the single
+  staging CI + Codex review gate.
 - Agent instructions live in `agents/*.md` — the single, harness-agnostic
   source of truth. Never restate them elsewhere; point to them.
 - Any harness change (`.claude/`, `CLAUDE.md`, `.mcp.json`, hooks) updates
