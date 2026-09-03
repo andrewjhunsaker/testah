@@ -1,0 +1,181 @@
+name: codex-review
+
+on:
+  pull_request_target:
+    branches: [staging, master]
+    types: [opened, reopened, synchronize]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  checks: write
+  contents: read
+  issues: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  codex-review:
+    if: >-
+      (github.event_name == 'pull_request_target' &&
+      github.event.pull_request.base.ref == 'staging') ||
+      (github.event_name == 'pull_request_review' &&
+      github.event.pull_request.base.ref == 'staging' &&
+      github.event.review.user.login == 'chatgpt-codex-connector[bot]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the exact-head Codex review status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_REVIEWED_SHA: ${{ github.event.review.commit_id }}
+          EVENT_REVIEW_ID: ${{ github.event.review.id }}
+          CODEX_LOGIN: chatgpt-codex-connector[bot]
+        run: |
+          if [ "$EVENT_NAME" = "pull_request_target" ]; then
+            gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+              -f state=pending \
+              -f context=codex-review \
+              -f description='Waiting for Codex review of this commit'
+
+            # A review can arrive before this workflow run starts. Reconcile it
+            # after writing pending so pending can never be the final state.
+            REVIEW_ID=$(gh api \
+              "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews?per_page=100" \
+              --paginate --slurp | jq -r \
+              --arg codex_login "$CODEX_LOGIN" --arg head_sha "$HEAD_SHA" \
+              '[.[][] | select(.user.login == $codex_login and .commit_id == $head_sha)] | last | .id // empty')
+            if [ -z "$REVIEW_ID" ]; then
+              CLEAN_BODY=$(gh api \
+                "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+                --paginate --slurp | jq -r --arg codex_login "$CODEX_LOGIN" \
+                --arg clean_phrase "Codex Review: Didn't find any major issues." \
+                '[.[][] | select(.user.login == $codex_login and (.body | contains($clean_phrase)))] | last | .body // empty')
+              if [ -z "$CLEAN_BODY" ]; then
+                exit 0
+              fi
+
+              REVIEWED_PREFIX=$(printf '%s\n' "$CLEAN_BODY" | sed -nE \
+                's/^\*\*Reviewed commit:\*\* `([0-9a-f]{7,40})`$/\1/p' | head -n 1)
+              if [ -z "$REVIEWED_PREFIX" ]; then
+                exit 0
+              fi
+
+              RESOLVED_SHA=$(gh api "repos/${REPOSITORY}/commits/${REVIEWED_PREFIX}" --jq .sha)
+              if [ "$RESOLVED_SHA" != "$HEAD_SHA" ]; then
+                exit 0
+              fi
+
+              gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+                -f state=success \
+                -f context=codex-review \
+                -f description='Codex review is clean for this commit'
+              exit 0
+            fi
+          else
+            if [ "$EVENT_REVIEWED_SHA" != "$HEAD_SHA" ]; then
+              echo "ignoring Codex review of stale commit ${EVENT_REVIEWED_SHA}"
+              exit 0
+            fi
+            REVIEW_ID="$EVENT_REVIEW_ID"
+          fi
+
+          finding_count=$(gh api \
+            "repos/${REPOSITORY}/pulls/${PR_NUMBER}/comments?per_page=100" \
+            --paginate --slurp | jq --argjson review_id "$REVIEW_ID" \
+            '[.[][] | select(.pull_request_review_id == $review_id)] | length')
+
+          if [ "$finding_count" -eq 0 ]; then
+            gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+              -f state=success \
+              -f context=codex-review \
+              -f description='Codex review is clean for this commit'
+            exit 0
+          fi
+
+          gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state=failure \
+            -f context=codex-review \
+            -f description="Codex review has ${finding_count} finding(s)"
+          exit 1
+
+  codex-clean-review:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'chatgpt-codex-connector[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish a clean Codex result on its resolved full commit SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          if [[ "$COMMENT_BODY" != *"Codex Review: Didn't find any major issues."* ]]; then
+            exit 0
+          fi
+
+          REVIEWED_PREFIX=$(printf '%s\n' "$COMMENT_BODY" | sed -nE \
+            's/^\*\*Reviewed commit:\*\* `([0-9a-f]{7,40})`$/\1/p' | head -n 1)
+          if [ -z "$REVIEWED_PREFIX" ]; then
+            exit 0
+          fi
+
+          pr_state=$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" \
+            --jq '[.base.ref, .head.sha] | @tsv')
+          IFS=$'\t' read -r base_ref HEAD_SHA <<< "$pr_state"
+          if [ "$base_ref" != "staging" ]; then
+            exit 0
+          fi
+
+          RESOLVED_SHA=$(gh api "repos/${REPOSITORY}/commits/${REVIEWED_PREFIX}" --jq .sha)
+          if [ "$RESOLVED_SHA" != "$HEAD_SHA" ]; then
+            echo "ignoring clean Codex result for non-head commit ${RESOLVED_SHA}"
+            exit 0
+          fi
+
+          gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state=success \
+            -f context=codex-review \
+            -f description='Codex review is clean for this commit'
+
+  promotion-source:
+    name: validate-promotion-source-event
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.base.ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the protected staging branch as the promotion source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$HEAD_REPOSITORY" = "$REPOSITORY" ] \
+            && [ "$HEAD_BRANCH" = "staging" ] \
+            && [ "$AUTHOR_LOGIN" = "github-actions[bot]" ]; then
+            conclusion=success
+          else
+            conclusion=failure
+          fi
+
+          gh api --method POST "repos/${REPOSITORY}/check-runs" \
+            -f name=promotion-source \
+            -f head_sha="$MERGE_SHA" \
+            -f status=completed \
+            -f conclusion="$conclusion"
+
+          if [ "$conclusion" = "failure" ]; then
+            exit 1
+          fi

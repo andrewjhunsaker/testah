@@ -9,8 +9,6 @@ Playwright suite, triage every failure, and draft the right tickets — while a
 human approves every consequential step. The suite it produces is plain
 `npx playwright test`: deterministic, CI-friendly, no LLM at runtime.
 
-![tests](https://github.com/andrewjhunsaker/testah/actions/workflows/tests.yml/badge.svg)
-
 ## How it works
 
 ```mermaid
@@ -61,7 +59,7 @@ so any stage can be re-run and git history is the audit log.
   pytest tripwire. Other LLM harnesses use `agents/*.md` directly.
 - **Tested substrate** — the deterministic core (crawler, drift, flake
   tracker, coverage maps, ticket filer) is plain Python with a fast pytest
-  suite; CI runs it alongside the e2e suite on every push.
+  suite; CI runs it alongside the e2e suite on feature PRs into `staging`.
 
 ## Quickstart
 
@@ -70,10 +68,22 @@ git clone --branch template --single-branch <this-repo> my-qa && cd my-qa
 bash setup.sh
 ```
 
-One command, a few questions: connect a git remote (GitHub/GitLab/Bitbucket),
-install dependencies, point testah at your site, optionally connect Linear —
-then it prints the command menu. The `template` branch is the clean starter;
-`master` carries this repo's own working artifacts.
+One command, a few questions: connect a GitHub project remote, install
+dependencies, point testah at your site, optionally connect Linear — then it
+prints the command menu. GitHub is currently required for the protected PR,
+Actions, Codex review, and issue workflow. The `template` branch is the clean
+starter. Setup pushes that branch to a replacement project remote; a human then
+creates `master` from the same history before setup creates `staging`. `master`
+carries this repo's own working artifacts. Setup also creates or repairs the
+canonical GitHub triage labels and applies the required protections to
+`staging` and `master`, widens the single-branch clone's fetch refspec, makes
+`master` the verified GitHub default, and binds required checks to the GitHub
+Actions app that produces them. It also makes merge commits the only enabled PR
+merge method so `staging` remains an ancestor of each released `master`. It
+stops instead of reporting the repository ready when those settings cannot be
+applied. Merges to `staging` maintain a bot-authored draft promotion PR,
+allowing the human owner—not the PR author—to provide the required approval
+before `master` changes.
 
 - **Design:** [docs/spec.md](docs/spec.md)
 - **How to run each pass:** [docs/running-the-loop.md](docs/running-the-loop.md)

@@ -34,10 +34,10 @@ def test_detect_new_then_unchanged_then_changed(tmp_path):
 
 def test_append_changed_dedups_and_new_is_sticky(tmp_path):
     p = tmp_path / "changed-pages.json"
-    append_changed(p, "vizaeo", "home", "new")
-    append_changed(p, "vizaeo", "home", "changed")
-    append_changed(p, "vizaeo", "help", "changed")
+    append_changed(p, "example", "home", "new")
+    append_changed(p, "example", "home", "changed")
+    append_changed(p, "example", "help", "changed")
     entries = json.loads(p.read_text())
     assert len(entries) == 2
-    assert {"target": "vizaeo", "slug": "home", "status": "new"} in entries
-    assert {"target": "vizaeo", "slug": "help", "status": "changed"} in entries
+    assert {"target": "example", "slug": "home", "status": "new"} in entries
+    assert {"target": "example", "slug": "help", "status": "changed"} in entries
