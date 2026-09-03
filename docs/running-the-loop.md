@@ -66,31 +66,34 @@ follow-up review when they require a new commit. The agent may merge the PR into
 `staging` only after the required `codex-review` status confirms that the exact
 head SHA has a Codex review with no inline findings.
 
-For an existing repository migrating to these gates, the first release that
+For an existing repository migrating to these gates, the first staging PR that
 introduces the trusted `pull_request_target` workflow cannot emit its own
-`codex-review` or `promotion-source` status: GitHub loads that workflow from the
-default branch, where it does not exist yet. Verify the exact-head Codex review
-on its staging PR and verify manually that the first master PR comes from this
-repository's `staging` branch. Retain the human promotion gate. Once the
-workflow reaches `master`, the exception is gone. Repositories initialized from
-`template` have the workflow in their first human-created `master` and never
-need this migration exception.
+`codex-review` status: GitHub loads that workflow from the default branch, where
+it does not exist yet. Verify that exact-head Codex review manually. The
+staging-push workflow emits `promotion-source` for the first promotion without
+an exception. Once the gate workflow reaches `master`, the exception is gone.
+Repositories initialized from `template` have the workflow in their first
+human-created `master` and never need this migration exception.
 
 Each merge to `staging` makes `.github/workflows/promotion-pr.yml` open a
 bot-authored draft promotion PR to `master`, or return the existing promotion
-to draft while it tracks the latest staging commit. After the combined branch
-has been exercised locally, an agent may mark that draft ready and must stop.
-GitHub branch protection rejects direct pushes to `master`, including
-administrator pushes, requires the exact-head `promotion-source` status that
-accepts only this repository's protected `staging` branch, and requires one
-approval. Because the PR author is `github-actions[bot]`, the human owner can
-approve it; an agent operating as that owner cannot substitute an unreviewed
-self-authored promotion. A new staging commit dismisses an older approval and
-requires the human to approve the latest head. The separate last-push-approval
-option stays off because agent staging merges use the human owner's GitHub
-identity and would otherwise disqualify that sole owner. The promotion does not
-rerun CI or request another Codex review: those gates already ran on the
-constituent staging PRs.
+to draft while it tracks the latest staging commit. That trusted staging-push
+workflow also publishes a `promotion-source` check on the promotion PR's unique
+test-merge commit. This avoids relying on the follow-on event from a
+`GITHUB_TOKEN`-created PR and prevents another PR that happens to reference the
+same head commit from sharing or poisoning the result. The master-target gate
+publishes a failing PR-specific check for every other source. After the combined
+branch has been exercised locally, an agent may mark that draft ready and must
+stop. GitHub branch protection rejects direct pushes to `master`, including
+administrator pushes, requires `promotion-source`, and requires one approval.
+Because the PR author is `github-actions[bot]`, the human owner can approve it;
+an agent operating as that owner cannot substitute an unreviewed self-authored
+promotion. A new staging commit dismisses an older approval and requires the
+human to approve the latest head. The separate last-push-approval option stays
+off because agent staging merges use the human owner's GitHub identity and
+would otherwise disqualify that sole owner. The promotion does not rerun CI or
+request another Codex review: those gates already ran on the constituent
+staging PRs.
 
 The merge to `master` is the validated release event. It triggers the
 project-data-free `template` sync; that workflow copies only the exact paths in

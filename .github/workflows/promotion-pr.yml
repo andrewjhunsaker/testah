@@ -5,6 +5,7 @@ on:
     branches: [staging]
 
 permissions:
+  checks: write
   contents: read
   pull-requests: write
 
@@ -12,11 +13,14 @@ jobs:
   keep-draft-current:
     runs-on: ubuntu-latest
     steps:
-      - name: Open a bot-authored draft promotion PR when needed
+      - name: Open or refresh the bot-authored draft promotion PR
         env:
           GH_TOKEN: ${{ github.token }}
+          STAGING_SHA: ${{ github.sha }}
         run: |
-          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base master --head staging --state open --json number,isDraft --jq '(.[0] // empty) | [.number, .isDraft] | @tsv')
+          OWNER=${GITHUB_REPOSITORY%%/*}
+          existing=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=master&head=${OWNER}:staging" \
+            --jq '(.[0] // empty) | [.number, .draft] | @tsv')
           if [ -n "$existing" ]; then
             read -r number is_draft <<< "$existing"
             if [ "$is_draft" = "false" ]; then
@@ -25,8 +29,32 @@ jobs:
             else
               echo "draft promotion PR #$number already tracks staging"
             fi
-            exit 0
+          else
+            pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base master --head staging --draft \
+              --title "Promote staging to master" \
+              --body "Bot-authored promotion PR. An agent may mark it ready after local validation; a human must approve and merge it. CI and Codex review already ran on the staging PRs.")
+            number=${pr_url##*/}
           fi
-          gh pr create --repo "$GITHUB_REPOSITORY" --base master --head staging --draft \
-            --title "Promote staging to master" \
-            --body "Bot-authored promotion PR. An agent may mark it ready after local validation; a human must approve and merge it. CI and Codex review already ran on the staging PRs."
+
+          merge_sha=
+          for _ in {1..12}; do
+            pr_state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" \
+              --jq '[.head.sha, (.merge_commit_sha // "")] | @tsv')
+            IFS=$'\t' read -r pr_head_sha merge_sha <<< "$pr_state"
+            if [ "$pr_head_sha" = "$STAGING_SHA" ] && [ -n "$merge_sha" ]; then
+              break
+            fi
+            merge_sha=
+            sleep 5
+          done
+
+          if [ -z "$merge_sha" ]; then
+            echo "could not resolve the current test-merge commit for promotion PR #$number" >&2
+            exit 1
+          fi
+
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" \
+            -f name=promotion-source \
+            -f head_sha="$merge_sha" \
+            -f status=completed \
+            -f conclusion=success

@@ -26,7 +26,8 @@ def test_codex_review_gate_runs_only_trusted_workflow_code():
     assert "pull_request_target:" in workflow
     assert "pull_request_review:" in workflow
     assert "types: [submitted]" in workflow
-    assert "branches: [staging]" in workflow
+    assert "branches: [staging, master]" in workflow
+    assert "pull_request_review:\n    types: [submitted]" in workflow
     assert "\n  codex-review:\n" in workflow
     assert "actions/checkout" not in workflow
     assert "statuses: write" in workflow
@@ -34,6 +35,7 @@ def test_codex_review_gate_runs_only_trusted_workflow_code():
     assert "github.event.review.commit_id" in workflow
     assert "github.event.review.id" in workflow
     assert "chatgpt-codex-connector[bot]" in workflow
+    assert "github.event.pull_request.base.ref == 'staging'" in workflow
     assert "pull_request_review_id" in workflow
     assert "statuses/${HEAD_SHA}" in workflow
     assert "state=pending" in workflow
@@ -57,12 +59,15 @@ def test_master_pr_gate_accepts_only_same_repo_staging_promotions():
     assert "github.event.pull_request.base.ref == 'master'" in workflow
     assert "github.event.pull_request.head.repo.full_name" in workflow
     assert "github.event.pull_request.head.ref" in workflow
+    assert "github.event.pull_request.merge_commit_sha" in workflow
     assert '"$HEAD_REPOSITORY" = "$REPOSITORY"' in workflow
     assert '"$HEAD_BRANCH" = "staging"' in workflow
-    assert "statuses/${HEAD_SHA}" in workflow
-    assert "context=promotion-source" in workflow
-    assert "state=success" in workflow
-    assert "state=failure" in workflow
+    assert "checks: write" in workflow
+    assert "check-runs" in workflow
+    assert 'head_sha="$MERGE_SHA"' in workflow
+    assert "name=promotion-source" in workflow
+    assert "conclusion=success" in workflow
+    assert "conclusion=failure" in workflow
 
 
 def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
@@ -70,11 +75,20 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
 
     assert "push:\n    branches: [staging]" in workflow
     assert "pull-requests: write" in workflow
+    assert "checks: write" in workflow
+    assert "github.sha" in workflow
+    assert "pulls/${number}" in workflow
+    assert ".merge_commit_sha" in workflow
+    assert "check-runs" in workflow
+    assert 'head_sha="$merge_sha"' in workflow
+    assert "name=promotion-source" in workflow
+    assert "conclusion=success" in workflow
     assert "gh pr create" in workflow
     assert "--base master" in workflow
     assert "--head staging" in workflow
     assert "--draft" in workflow
-    assert "--json number,isDraft" in workflow
+    assert "head=${OWNER}:staging" in workflow
+    assert "[.number, .draft]" in workflow
     assert "(.[0] // empty)" in workflow
     assert "gh pr ready" in workflow
     assert "--undo" in workflow

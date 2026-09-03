@@ -5,10 +5,10 @@ on:
     branches: [staging, master]
     types: [opened, reopened, synchronize]
   pull_request_review:
-    branches: [staging]
     types: [submitted]
 
 permissions:
+  checks: write
   contents: read
   pull-requests: read
   statuses: write
@@ -18,7 +18,9 @@ jobs:
     if: >-
       (github.event_name == 'pull_request_target' &&
       github.event.pull_request.base.ref == 'staging') ||
-      github.event.review.user.login == 'chatgpt-codex-connector[bot]'
+      (github.event_name == 'pull_request_review' &&
+      github.event.pull_request.base.ref == 'staging' &&
+      github.event.review.user.login == 'chatgpt-codex-connector[bot]')
     runs-on: ubuntu-latest
     steps:
       - name: Publish the exact-head Codex review status
@@ -76,6 +78,7 @@ jobs:
           exit 1
 
   promotion-source:
+    name: validate-promotion-source-event
     if: >-
       github.event_name == 'pull_request_target' &&
       github.event.pull_request.base.ref == 'master'
@@ -85,23 +88,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           if [ "$HEAD_REPOSITORY" = "$REPOSITORY" ] && [ "$HEAD_BRANCH" = "staging" ]; then
-            state=success
-            description='Promotion source is the protected staging branch'
+            conclusion=success
           else
-            state=failure
-            description='Master accepts promotion PRs only from this repository staging branch'
+            conclusion=failure
           fi
 
-          gh api --method POST "repos/${REPOSITORY}/statuses/${HEAD_SHA}" \
-            -f state="$state" \
-            -f context=promotion-source \
-            -f description="$description"
+          gh api --method POST "repos/${REPOSITORY}/check-runs" \
+            -f name=promotion-source \
+            -f head_sha="$MERGE_SHA" \
+            -f status=completed \
+            -f conclusion="$conclusion"
 
-          if [ "$state" = "failure" ]; then
+          if [ "$conclusion" = "failure" ]; then
             exit 1
           fi
