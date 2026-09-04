@@ -105,7 +105,9 @@ function writeCompletedReport(
         duration: 1250,
         startTime: '2026-09-01T12:00:00.000Z',
       },
-      config: { use: { baseURL: 'https://app.example.test' } },
+      config: {
+        metadata: { testah: { baseURL: 'https://app.example.test' } },
+      },
     }),
   )
 }

@@ -30,6 +30,43 @@ def test_playwright_report_persists_the_effective_target_url():
     assert config.count("baseURL: testahBaseURL") == 2
 
 
+def test_setup_adds_report_metadata_to_the_template_playwright_config(tmp_path):
+    config_path = tmp_path / "playwright.config.ts"
+    config_path.write_text(
+        "import { defineConfig } from '@playwright/test'\n\n"
+        "export default defineConfig({\n"
+        "  use: {\n"
+        "    baseURL: process.env.TESTAH_BASE_URL ?? 'https://example.test',\n"
+        "  },\n"
+        "})\n",
+        encoding="utf-8",
+    )
+    helper = ROOT / "scripts" / "configure_playwright_target.mjs"
+
+    subprocess.run(
+        ["node", str(helper), "https://new.example.test", str(config_path)],
+        check=True,
+    )
+    subprocess.run(
+        ["node", str(helper), "https://newer.example.test", str(config_path)],
+        check=True,
+    )
+
+    configured = config_path.read_text(encoding="utf-8")
+    assert "process.env.TESTAH_BASE_URL ?? 'https://newer.example.test'" in configured
+    assert configured.count("const testahBaseURL =") == 1
+    assert configured.count("metadata:") == 1
+    assert configured.count("baseURL: testahBaseURL") == 2
+
+
+def test_setup_uses_the_synced_playwright_metadata_helper():
+    setup = (ROOT / "setup.sh").read_text()
+
+    assert "node scripts/configure_playwright_target.mjs" in setup
+    assert "s|process.env.TESTAH_BASE_URL" not in setup
+    assert "scripts/configure_playwright_target.mjs" in _allowlisted_paths()
+
+
 def test_codex_review_gate_runs_only_trusted_workflow_code():
     workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
 
@@ -150,6 +187,7 @@ def test_template_sync_uses_a_versioned_exact_file_manifest():
         "scripts/bootstrap_github_labels.sh",
         "scripts/bootstrap_github_protections.sh",
         "scripts/bootstrap_release_branches.sh",
+        "scripts/configure_playwright_target.mjs",
         "scripts/sync_template_paths.sh",
         "scripts/template_paths.txt",
         "scripts/tests/test_dashboard.py",

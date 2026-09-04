@@ -240,6 +240,46 @@ def test_single_target_report_requires_matching_target_identity(tmp_path):
     }
 
 
+def test_incomplete_report_is_only_attached_to_its_recorded_target(tmp_path):
+    """Partial statistics never leak onto another configured target."""
+    repo = fixture_repository(tmp_path, with_report=True, target_count=2)
+    report = {
+        **COMPLETED_REPORT,
+        "stats": {**COMPLETED_REPORT["stats"], "expected": None},
+    }
+    (repo / "reports" / "last-run.json").write_text(
+        json.dumps(report), encoding="utf-8"
+    )
+
+    targets = build_snapshot(repo)["targets"]
+
+    assert targets[0]["latest_run"]["state"] == "incomplete"
+    assert targets[0]["latest_run"]["counts"]["failed"] == 1
+    assert targets[1]["latest_run"] == {
+        "state": "never-run",
+        "started_at": None,
+        "duration_ms": None,
+        "counts": None,
+    }
+
+
+def test_recorded_target_metadata_wins_over_unrelated_report_urls(tmp_path):
+    """Failure text mentioning another target cannot override producer metadata."""
+    repo = fixture_repository(tmp_path, with_report=True, target_count=2)
+    report = {
+        **COMPLETED_REPORT,
+        "errors": [{"message": "https://other.example.com"}],
+    }
+    (repo / "reports" / "last-run.json").write_text(
+        json.dumps(report), encoding="utf-8"
+    )
+
+    targets = build_snapshot(repo)["targets"]
+
+    assert targets[0]["latest_run"]["state"] == "completed"
+    assert targets[1]["latest_run"]["state"] == "never-run"
+
+
 def test_snapshot_version_changes_with_dashboard_evidence(tmp_path):
     """A report rewrite changes the version that drives client refreshes."""
     repo = fixture_repository(tmp_path, with_report=True)

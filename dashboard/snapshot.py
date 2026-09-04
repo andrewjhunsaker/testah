@@ -31,13 +31,14 @@ def build_snapshot(root: Path, checked_at: datetime | None = None) -> dict[str, 
     for target in targets:
         state = report_state
         target_report = report
-        if state == "completed":
+        if report is not None:
             if attributed_target is None:
-                state = "partial"
+                if state == "completed":
+                    state = "partial"
             elif attributed_target != target["key"]:
                 state = "never-run"
                 target_report = None
-            elif report_is_stale:
+            elif state == "completed" and report_is_stale:
                 state = "stale"
         normalized_targets.append(
             {
@@ -138,29 +139,30 @@ def _attributed_target(
 ) -> str | None:
     if not report or not targets:
         return None
-    report_urls = {_normal_url(url) for url in _strings_in(report) if _looks_like_url(url)}
+    report_url = _reported_target_url(report)
+    if report_url is None:
+        return None
     matched = [
         target["key"]
         for target in targets
         if isinstance(target["base_url"], str)
-        and _normal_url(target["base_url"]) in report_urls
+        and _normal_url(target["base_url"]) == _normal_url(report_url)
     ]
     return str(matched[0]) if len(matched) == 1 else None
 
 
-def _strings_in(value: object):
-    if isinstance(value, dict):
-        for child in value.values():
-            yield from _strings_in(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from _strings_in(child)
-    elif isinstance(value, str):
-        yield value
-
-
-def _looks_like_url(value: str) -> bool:
-    return value.startswith(("http://", "https://"))
+def _reported_target_url(report: dict[str, Any]) -> str | None:
+    config = report.get("config")
+    if not isinstance(config, dict):
+        return None
+    metadata = config.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    testah = metadata.get("testah")
+    if not isinstance(testah, dict):
+        return None
+    base_url = testah.get("baseURL")
+    return base_url if isinstance(base_url, str) else None
 
 
 def _normal_url(value: str) -> str:

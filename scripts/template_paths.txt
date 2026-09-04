@@ -43,6 +43,7 @@ scripts/__init__.py
 scripts/bootstrap_github_labels.sh
 scripts/bootstrap_github_protections.sh
 scripts/bootstrap_release_branches.sh
+scripts/configure_playwright_target.mjs
 scripts/coverage_map.py
 scripts/crawl.py
 scripts/drift.py
