@@ -32,6 +32,13 @@ jobs:
             if [ "$is_draft" = "false" ]; then
               if [ "$PROMOTION_RUN_ATTEMPT" -gt 1 ]; then
                 gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+                master_has_ready_validator=$(gh api \
+                  "repos/${GITHUB_REPOSITORY}/git/trees/master?recursive=1" \
+                  --jq '[.tree[].path] | index(".github/workflows/codex-review.yml") != null')
+                if [ "$master_has_ready_validator" = "true" ]; then
+                  echo "workflow rerun refused: trusted default-branch ready validator is already active" >&2
+                  exit 1
+                fi
                 if ! first_attempt=$(gh api \
                   "repos/${GITHUB_REPOSITORY}/actions/runs/${PROMOTION_RUN_ID}/attempts/1" \
                   --jq '[.conclusion, .head_sha] | @tsv'); then
@@ -50,6 +57,12 @@ jobs:
                   exit 1
                 fi
                 gh pr ready "$number" --repo "$GITHUB_REPOSITORY"
+                ready_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)
+                if [ "$ready_pr_head" != "$STAGING_SHA" ]; then
+                  gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: promotion PR advanced while restoring ready state" >&2
+                  exit 1
+                fi
                 echo "validating ready promotion PR #$number on workflow rerun"
               else
                 gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
@@ -77,6 +90,11 @@ jobs:
             pr_state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" \
               --jq '[.head.sha, (.merge_commit_sha // "")] | @tsv')
             IFS=$'\t' read -r pr_head_sha merge_sha <<< "$pr_state"
+            if [ "$pr_head_sha" != "$STAGING_SHA" ]; then
+              gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+              echo "promotion PR advanced before source validation; returned it to draft" >&2
+              exit 1
+            fi
             if [ "$pr_head_sha" = "$STAGING_SHA" ] && [ -n "$merge_sha" ]; then
               break
             fi
