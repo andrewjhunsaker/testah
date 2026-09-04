@@ -23,6 +23,8 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      TESTAH_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

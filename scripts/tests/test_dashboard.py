@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -352,6 +353,7 @@ def test_producer_and_dashboard_compute_the_same_source_provenance(tmp_path):
     (repo / "tests" / "specs" / "a.spec.ts").write_text(
         "test('lowercase', () => {});\n", encoding="utf-8"
     )
+    (repo / "tests" / "specs" / "linked.spec.ts").symlink_to("a.spec.ts")
     module_url = (
         Path(__file__).resolve().parents[1] / "testah_source_provenance.mjs"
     ).as_uri()
@@ -368,3 +370,26 @@ def test_producer_and_dashboard_compute_the_same_source_provenance(tmp_path):
     )
 
     assert json.loads(producer.stdout) == source_provenance(repo)
+
+
+def test_producer_uses_the_explicit_ci_source_commit(tmp_path):
+    """A merge-ref checkout can stamp the downloadable PR-head identity."""
+    repo = fixture_repository(tmp_path, with_report=False)
+    module_url = (
+        Path(__file__).resolve().parents[1] / "testah_source_provenance.mjs"
+    ).as_uri()
+    script = (
+        f"import {{ sourceProvenance }} from {json.dumps(module_url)}; "
+        "console.log(JSON.stringify(sourceProvenance(process.argv[1])))"
+    )
+    expected_commit = "a" * 40
+
+    producer = subprocess.run(
+        ["node", "--input-type=module", "--eval", script, str(repo)],
+        check=True,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "TESTAH_SOURCE_COMMIT": expected_commit},
+    )
+
+    assert json.loads(producer.stdout)["sourceCommit"] == expected_commit

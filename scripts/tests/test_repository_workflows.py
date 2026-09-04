@@ -17,6 +17,7 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "pnpm test:dashboard" in workflow
     assert "dashboard.playwright.config.ts" in workflow
     assert "github.event.pull_request.base.sha" in workflow
+    assert "TESTAH_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}" in workflow
     assert "dashboard config was removed" in workflow
 
 

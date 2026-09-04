@@ -43,6 +43,9 @@ export function sourceFingerprint(root = process.cwd()) {
 }
 
 function sourceCommit(root) {
+  if (process.env.TESTAH_SOURCE_COMMIT) {
+    return process.env.TESTAH_SOURCE_COMMIT
+  }
   try {
     return execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: root,
@@ -59,7 +62,10 @@ function collectFiles(root, directory, entries) {
     const absolutePath = join(directory, entry.name)
     if (entry.isDirectory()) {
       collectFiles(root, absolutePath, entries)
-    } else if (entry.isFile()) {
+    } else if (
+      entry.isFile() ||
+      (entry.isSymbolicLink() && isFile(absolutePath))
+    ) {
       entries.push(fileEntry(root, relative(root, absolutePath)))
     }
   }
@@ -80,6 +86,14 @@ function fileEntry(root, path) {
 function isDirectory(path) {
   try {
     return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function isFile(path) {
+  try {
+    return statSync(path).isFile()
   } catch {
     return false
   }
