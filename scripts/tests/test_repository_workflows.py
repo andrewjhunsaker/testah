@@ -157,8 +157,10 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     workflow = (ROOT / ".github/workflows/promotion-pr.yml").read_text()
 
     assert "push:\n    branches: [staging]" in workflow
-    promotion_job = workflow.split("  keep-draft-current:", 1)[1]
-    assert promotion_job.index("name: promotion-source") < promotion_job.index("runs-on:")
+    assert "keep-draft-current:\n    name: keep-draft-current" in workflow
+    assert "PROMOTION_RUN_ATTEMPT: ${{ github.run_attempt }}" in workflow
+    assert '"$PROMOTION_RUN_ATTEMPT" -gt 1' in workflow
+    assert "validating ready promotion PR" in workflow
     assert "pull-requests: write" in workflow
     assert "checks: write" in workflow
     assert "github.sha" in workflow
