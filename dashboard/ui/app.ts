@@ -37,6 +37,7 @@ let currentVersion: string | null = null;
 let refreshInFlight = false;
 let pollingTimer: number | undefined;
 let hasSnapshot = false;
+let visibilityGeneration = 0;
 
 void initialize();
 
@@ -51,6 +52,7 @@ function onVisibilityChange(): void {
     void refreshWhenChanged();
     startPolling();
   } else {
+    visibilityGeneration += 1;
     stopPolling();
   }
 }
@@ -68,16 +70,18 @@ function stopPolling(): void {
 
 async function refreshWhenChanged(): Promise<void> {
   if (document.visibilityState !== "visible" || refreshInFlight) return;
+  const refreshGeneration = visibilityGeneration;
   refreshInFlight = true;
   try {
     const version = await fetchVersion();
+    if (!isCurrentRefresh(refreshGeneration)) return;
     if (version !== currentVersion) {
-      if (await renderSnapshot()) currentVersion = version;
+      if (await renderSnapshot(refreshGeneration)) currentVersion = version;
     } else if (hasSnapshot) {
       loadError.hidden = true;
     }
   } catch {
-    showUnavailable();
+    if (isCurrentRefresh(refreshGeneration)) showUnavailable();
   } finally {
     refreshInFlight = false;
   }
@@ -91,18 +95,27 @@ async function fetchVersion(): Promise<string> {
   return body.version;
 }
 
-async function renderSnapshot(): Promise<boolean> {
+async function renderSnapshot(refreshGeneration: number): Promise<boolean> {
   try {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
     if (!response.ok) throw new Error(`Snapshot request failed (${response.status})`);
-    render(await response.json() as Snapshot);
+    const snapshot = await response.json() as Snapshot;
+    if (!isCurrentRefresh(refreshGeneration)) return false;
+    render(snapshot);
     hasSnapshot = true;
     loadError.hidden = true;
     return true;
   } catch {
-    showUnavailable();
+    if (isCurrentRefresh(refreshGeneration)) showUnavailable();
     return false;
   }
+}
+
+function isCurrentRefresh(refreshGeneration: number): boolean {
+  return (
+    document.visibilityState === "visible" &&
+    refreshGeneration === visibilityGeneration
+  );
 }
 
 function showUnavailable(): void {

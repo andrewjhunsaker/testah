@@ -279,3 +279,49 @@ test('Overview pauses refresh while hidden and refreshes when visible', async ({
     await cleanup(dashboard, fixtureRoot)
   }
 })
+
+test('Overview discards a refresh that was already running when hidden', async ({
+  page,
+}) => {
+  const fixtureRoot = createFixtureRepository()
+  const dashboard = launchDashboard(fixtureRoot)
+  const snapshot = new CurrentSnapshotPage(page)
+  let holdNextVersion = false
+  let releaseVersion: (() => void) | undefined
+
+  await page.route('**/api/version', async (route) => {
+    if (holdNextVersion) {
+      holdNextVersion = false
+      await new Promise<void>((resolve) => {
+        releaseVersion = resolve
+      })
+    }
+    await route.continue()
+  })
+
+  try {
+    await snapshot.installClock()
+    await snapshot.goto(await dashboard.url)
+    await expect(snapshot.count(33, 'passed')).toBeVisible()
+
+    const initialRequests = snapshot.versionRequestCount()
+    holdNextVersion = true
+    writeCompletedReport(fixtureRoot, { passed: 31, failed: 3 })
+    await page.clock.fastForward(2_000)
+    await expect.poll(() => snapshot.versionRequestCount()).toBe(initialRequests + 1)
+
+    await snapshot.setVisibility('hidden')
+    releaseVersion?.()
+    await page.waitForLoadState('networkidle')
+
+    await expect(snapshot.count(33, 'passed')).toBeVisible()
+    await expect(snapshot.count(31, 'passed')).toHaveCount(0)
+
+    await snapshot.setVisibility('visible')
+    await expect(snapshot.count(31, 'passed')).toBeVisible()
+    await expect(snapshot.count(3, 'failed')).toBeVisible()
+  } finally {
+    releaseVersion?.()
+    await cleanup(dashboard, fixtureRoot)
+  }
+})
