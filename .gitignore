@@ -1,4 +1,5 @@
 node_modules/
+dashboard/ui/dist/
 test-results/
 reports/*
 !reports/.gitkeep

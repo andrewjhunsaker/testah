@@ -191,9 +191,11 @@ targets:
         path: $tpath
         auth: none
 EOF
-    sed -i.bak "s|process.env.TESTAH_BASE_URL ?? '[^']*'|process.env.TESTAH_BASE_URL ?? '$turl'|" playwright.config.ts \
-      && rm -f playwright.config.ts.bak
-    note "targets.yaml written; playwright baseURL -> $turl"
+    if ! node scripts/configure_playwright_target.mjs "$turl"; then
+      note "could not configure Playwright target metadata; fix the config and rerun."
+      exit 1
+    fi
+    note "targets.yaml written; Playwright target and report metadata -> $turl"
     if [ -d node_modules ] && ask "  Run the smoke test against $turl now?" y; then
       pnpm exec playwright test --grep @smoke \
         || note "smoke failed — edit tests/specs/smoke.spec.ts to assert something true about YOUR site, then re-run."

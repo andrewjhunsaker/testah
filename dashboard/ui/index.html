@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Current Snapshot</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/dist/app.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">QA overview</p>
+        <h1>Current Snapshot</h1>
+        <p id="checked-at">Loading current evidence…</p>
+      </header>
+
+      <section aria-labelledby="repository-heading">
+        <h2 id="repository-heading">Repository</h2>
+        <div id="repository-identity">Loading repository identity…</div>
+      </section>
+
+      <section aria-labelledby="targets-heading">
+        <h2 id="targets-heading">Targets</h2>
+        <div id="targets" aria-live="polite"></div>
+      </section>
+
+      <p id="load-error" role="alert" hidden></p>
+    </main>
+  </body>
+</html>
