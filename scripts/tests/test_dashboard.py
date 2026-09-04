@@ -12,6 +12,7 @@ COMPLETED_REPORT = {
     "config": {
         "metadata": {"testah": {"baseURL": "https://app.example.test"}},
     },
+    "errors": [],
     "stats": {
         "startTime": "2026-08-28T17:11:39.230Z",
         "duration": 14404.824,
@@ -178,6 +179,28 @@ def test_snapshot_rejects_structurally_invalid_report_values(field, value, tmp_p
         assert latest_run["started_at"] is None
 
 
+def test_top_level_playwright_errors_prevent_completed_evidence(tmp_path):
+    """A runner-level failure cannot be presented as a completed test run."""
+    repo = fixture_repository(tmp_path, with_report=True)
+    report = {
+        **COMPLETED_REPORT,
+        "errors": [{"message": "global setup failed"}],
+    }
+    (repo / "reports" / "last-run.json").write_text(
+        json.dumps(report), encoding="utf-8"
+    )
+
+    latest_run = build_snapshot(repo)["targets"][0]["latest_run"]
+
+    assert latest_run["state"] == "incomplete"
+    assert latest_run["counts"] == {
+        "passed": 33,
+        "failed": 1,
+        "flaky": 0,
+        "skipped": 0,
+    }
+
+
 def test_snapshot_normalizes_iso_start_time(tmp_path):
     """A valid report timestamp is returned as a normalized UTC ISO timestamp."""
     repo = fixture_repository(tmp_path, with_report=True)
@@ -271,7 +294,7 @@ def test_recorded_target_metadata_wins_over_unrelated_report_urls(tmp_path):
     repo = fixture_repository(tmp_path, with_report=True, target_count=2)
     report = {
         **COMPLETED_REPORT,
-        "errors": [{"message": "https://other.example.com"}],
+        "suites": [{"title": "https://other.example.com"}],
     }
     (repo / "reports" / "last-run.json").write_text(
         json.dumps(report), encoding="utf-8"

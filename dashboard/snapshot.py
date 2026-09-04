@@ -118,7 +118,8 @@ def _read_report(path: Path) -> tuple[str, dict[str, Any] | None]:
 
 def _has_complete_stats(report: dict[str, Any]) -> bool:
     stats = report.get("stats")
-    if not isinstance(stats, dict):
+    errors = report.get("errors")
+    if not isinstance(stats, dict) or errors != []:
         return False
     return (
         all(

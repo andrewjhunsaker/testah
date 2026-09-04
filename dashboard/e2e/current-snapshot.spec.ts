@@ -102,6 +102,7 @@ function writeCompletedReport(
   writeFileSync(
     join(root, 'reports', 'last-run.json'),
     JSON.stringify({
+      errors: [],
       stats: {
         expected: counts.passed,
         unexpected: counts.failed,
