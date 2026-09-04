@@ -218,6 +218,26 @@ def test_snapshot_preserves_evidence_state(report_case, expected_state, tmp_path
     assert target["latest_run"]["state"] == expected_state
 
 
+def test_single_target_report_requires_matching_target_identity(tmp_path):
+    """A report from an overridden host is not attributed by target count alone."""
+    repo = fixture_repository(
+        tmp_path,
+        with_report=True,
+        report_case="unattributed",
+        target_count=1,
+    )
+
+    target = build_snapshot(repo)["targets"][0]
+
+    assert target["latest_run"]["state"] == "partial"
+    assert target["latest_run"]["counts"] == {
+        "passed": 33,
+        "failed": 1,
+        "flaky": 0,
+        "skipped": 0,
+    }
+
+
 def test_snapshot_version_changes_with_dashboard_evidence(tmp_path):
     """A report rewrite changes the version that drives client refreshes."""
     repo = fixture_repository(tmp_path, with_report=True)

@@ -71,7 +71,11 @@ async function refreshWhenChanged(): Promise<void> {
   refreshInFlight = true;
   try {
     const version = await fetchVersion();
-    if (version !== currentVersion && await renderSnapshot()) currentVersion = version;
+    if (version !== currentVersion) {
+      if (await renderSnapshot()) currentVersion = version;
+    } else if (hasSnapshot) {
+      loadError.hidden = true;
+    }
   } catch {
     showUnavailable();
   } finally {

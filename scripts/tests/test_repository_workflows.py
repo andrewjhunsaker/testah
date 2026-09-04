@@ -281,6 +281,18 @@ def test_template_allowlist_contains_no_project_brand_content():
     assert leaking_files == []
 
 
+def test_template_requirements_have_self_contained_provenance():
+    leaking_requirements = []
+    for relative_path in _allowlisted_paths():
+        if not relative_path.startswith("requirements/"):
+            continue
+        contents = (ROOT / relative_path).read_text()
+        if "GitHub Issue #" in contents or "docs/adr/" in contents:
+            leaking_requirements.append(relative_path)
+
+    assert leaking_requirements == []
+
+
 def _allowlisted_paths() -> list[str]:
     return [
         line

@@ -138,8 +138,6 @@ def _attributed_target(
 ) -> str | None:
     if not report or not targets:
         return None
-    if len(targets) == 1:
-        return str(targets[0]["key"])
     report_urls = {_normal_url(url) for url in _strings_in(report) if _looks_like_url(url)}
     matched = [
         target["key"]

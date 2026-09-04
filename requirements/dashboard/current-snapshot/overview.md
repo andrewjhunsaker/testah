@@ -5,8 +5,7 @@ approved: true
 
 - target: dashboard
 - slug: current-snapshot
-- source: GitHub Issue #2; `docs/adr/0001-live-local-control-plane.md`;
-  `docs/adr/0002-project-external-history-locally.md`
+- source: Testah framework requirement — thin live-local Current Snapshot
 
 ## Scenario 1 — the operator can read current repository evidence
 

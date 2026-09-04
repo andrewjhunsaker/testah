@@ -214,6 +214,40 @@ test('Overview retains the last good snapshot when refresh fails', async ({ page
   }
 })
 
+test('Overview clears the unavailable notice when version polling recovers', async ({
+  page,
+}) => {
+  const fixtureRoot = createFixtureRepository()
+  const dashboard = launchDashboard(fixtureRoot)
+  const snapshot = new CurrentSnapshotPage(page)
+  let failNextVersionRequest = false
+
+  await page.route('**/api/version', async (route) => {
+    if (failNextVersionRequest) {
+      failNextVersionRequest = false
+      await route.fulfill({ status: 503, body: 'temporarily unavailable' })
+      return
+    }
+    await route.continue()
+  })
+
+  try {
+    await snapshot.installClock()
+    await snapshot.goto(await dashboard.url)
+    await expect(snapshot.unavailableNotice).toBeHidden()
+
+    failNextVersionRequest = true
+    await snapshot.advanceTime(2_000)
+    await expect(snapshot.unavailableNotice).toBeVisible()
+
+    await snapshot.advanceTime(2_000)
+    await expect(snapshot.unavailableNotice).toBeHidden()
+    await expect(snapshot.count(33, 'passed')).toBeVisible()
+  } finally {
+    await cleanup(dashboard, fixtureRoot)
+  }
+})
+
 test('Overview pauses refresh while hidden and refreshes when visible', async ({
   page,
 }) => {
