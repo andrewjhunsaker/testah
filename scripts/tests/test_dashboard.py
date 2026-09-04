@@ -10,9 +10,7 @@ from dashboard.snapshot import build_snapshot, snapshot_version
 
 COMPLETED_REPORT = {
     "config": {
-        "projects": [
-            {"use": {"baseURL": "https://app.example.test"}},
-        ],
+        "metadata": {"testah": {"baseURL": "https://app.example.test"}},
     },
     "stats": {
         "startTime": "2026-08-28T17:11:39.230Z",
@@ -81,7 +79,11 @@ def fixture_repository(
             elif report_case == "unattributed":
                 report = {
                     **COMPLETED_REPORT,
-                    "config": {"projects": [{"use": {"baseURL": "https://unknown.example"}}]},
+                    "config": {
+                        "metadata": {
+                            "testah": {"baseURL": "https://unknown.example"}
+                        }
+                    },
                 }
             report_path.write_text(json.dumps(report), encoding="utf-8")
             if report_case == "older-than-sources":

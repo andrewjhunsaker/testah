@@ -20,6 +20,16 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "dashboard config was removed" in workflow
 
 
+def test_playwright_report_persists_the_effective_target_url():
+    config = (ROOT / "playwright.config.ts").read_text()
+
+    assert "const testahBaseURL =" in config
+    assert "metadata:" in config
+    assert "testahBaseURL" in config
+    assert "use: {" in config
+    assert config.count("baseURL: testahBaseURL") == 2
+
+
 def test_codex_review_gate_runs_only_trusted_workflow_code():
     workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
 
