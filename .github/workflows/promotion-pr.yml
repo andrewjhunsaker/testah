@@ -44,6 +44,11 @@ jobs:
                   echo "unsafe workflow rerun returned promotion PR #$number to draft: attempt 1 did not validate this staging SHA" >&2
                   exit 1
                 fi
+                current_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)
+                if [ "$current_pr_head" != "$STAGING_SHA" ]; then
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: promotion PR head no longer matches this staging run" >&2
+                  exit 1
+                fi
                 gh pr ready "$number" --repo "$GITHUB_REPOSITORY"
                 echo "validating ready promotion PR #$number on workflow rerun"
               else

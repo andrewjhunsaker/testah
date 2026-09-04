@@ -165,6 +165,9 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     assert "actions/runs/${PROMOTION_RUN_ID}/attempts/1" in workflow
     assert '"$first_attempt_conclusion" != "success"' in workflow
     assert '"$first_attempt_head_sha" != "$STAGING_SHA"' in workflow
+    assert 'current_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)' in workflow
+    assert '"$current_pr_head" != "$STAGING_SHA"' in workflow
+    assert "promotion PR head no longer matches this staging run" in workflow
     assert "unsafe workflow rerun returned promotion PR" in workflow
     assert "validating ready promotion PR" in workflow
     assert "pull-requests: write" in workflow
