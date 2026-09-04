@@ -11,6 +11,9 @@ permissions:
 
 jobs:
   keep-draft-current:
+    # This head-level check survives draft -> ready, while the explicit
+    # check-run below binds the result to the PR's current test-merge SHA.
+    name: promotion-source
     runs-on: ubuntu-latest
     steps:
       - name: Open or refresh the bot-authored draft promotion PR

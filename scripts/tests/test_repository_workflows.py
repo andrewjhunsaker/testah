@@ -135,6 +135,7 @@ def test_master_pr_gate_accepts_only_same_repo_staging_promotions():
     workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
 
     assert "branches: [staging, master]" in workflow
+    assert "types: [opened, reopened, synchronize, ready_for_review]" in workflow
     assert "\n  promotion-source:\n" in workflow
     assert "github.event.pull_request.base.ref == 'master'" in workflow
     assert "github.event.pull_request.head.repo.full_name" in workflow
@@ -156,6 +157,8 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     workflow = (ROOT / ".github/workflows/promotion-pr.yml").read_text()
 
     assert "push:\n    branches: [staging]" in workflow
+    promotion_job = workflow.split("  keep-draft-current:", 1)[1]
+    assert promotion_job.index("name: promotion-source") < promotion_job.index("runs-on:")
     assert "pull-requests: write" in workflow
     assert "checks: write" in workflow
     assert "github.sha" in workflow
