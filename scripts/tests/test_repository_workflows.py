@@ -38,6 +38,7 @@ def test_playwright_report_persists_the_effective_target_url(tmp_path):
 
     assert "const testahBaseURL =" in config
     assert "metadata:" in config
+    assert "sourceProvenance" in config
     assert "testahBaseURL" in config
     assert "use: {" in config
     assert config.count("baseURL: testahBaseURL") == 2
@@ -69,12 +70,13 @@ def test_setup_adds_report_metadata_to_the_template_playwright_config(tmp_path):
     configured = config_path.read_text(encoding="utf-8")
     assert (
         "process.env.TESTAH_BASE_URL ?? 'https://newer.example.test'\n\n"
-        "export default defineConfig({"
+        "const testahSourceProvenance = sourceProvenance()"
     ) in configured
     assert "it\\'s" not in configured
     assert configured.count("const testahBaseURL =") == 1
     assert configured.count("metadata:") == 1
     assert configured.count("baseURL: testahBaseURL") == 2
+    assert configured.count("...testahSourceProvenance,") == 1
 
 
 def test_setup_uses_the_synced_playwright_metadata_helper():
@@ -83,6 +85,7 @@ def test_setup_uses_the_synced_playwright_metadata_helper():
     assert "node scripts/configure_playwright_target.mjs" in setup
     assert "s|process.env.TESTAH_BASE_URL" not in setup
     assert "scripts/configure_playwright_target.mjs" in _allowlisted_paths()
+    assert "scripts/testah_source_provenance.mjs" in _allowlisted_paths()
 
 
 def test_codex_review_gate_runs_only_trusted_workflow_code():
@@ -208,6 +211,8 @@ def test_template_sync_uses_a_versioned_exact_file_manifest():
         "scripts/configure_playwright_target.mjs",
         "scripts/sync_template_paths.sh",
         "scripts/template_paths.txt",
+        "scripts/testah_source_provenance.d.mts",
+        "scripts/testah_source_provenance.mjs",
         "scripts/tests/test_dashboard.py",
         "tests/pages/CurrentSnapshotPage.ts",
         "requirements/dashboard/current-snapshot/overview.md",

@@ -25,6 +25,11 @@ const inlineBaseUrlPattern = new RegExp(
 )
 
 let config = readFileSync(configPath, 'utf8')
+if (!config.includes("from './scripts/testah_source_provenance.mjs'")) {
+  config =
+    `import { sourceProvenance } from './scripts/testah_source_provenance.mjs'\n` +
+    config
+}
 if (declarationPattern.test(config)) {
   config = config.replace(declarationPattern, declaration)
 } else {
@@ -38,14 +43,29 @@ if (declarationPattern.test(config)) {
       `  metadata: {\n` +
       `    testah: {\n` +
       `      baseURL: testahBaseURL,\n` +
+      `      ...testahSourceProvenance,\n` +
       `    },\n` +
       `  },`,
   )
   config = config.replace(inlineBaseUrlPattern, 'baseURL: testahBaseURL')
 }
 
+if (!config.includes('const testahSourceProvenance = sourceProvenance()')) {
+  config = config.replace(
+    'export default defineConfig({',
+    'const testahSourceProvenance = sourceProvenance()\n\nexport default defineConfig({',
+  )
+}
+if (!config.includes('...testahSourceProvenance,')) {
+  config = config.replace(
+    'testah: {',
+    'testah: {\n      ...testahSourceProvenance,',
+  )
+}
+
 if (
   !config.includes('metadata:') ||
+  !config.includes('...testahSourceProvenance,') ||
   config.match(/baseURL: testahBaseURL/g)?.length !== 2
 ) {
   throw new Error('playwright.config.ts is missing Testah report metadata')

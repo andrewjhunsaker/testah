@@ -1,11 +1,10 @@
 import json
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from dashboard.snapshot import build_snapshot, snapshot_version
+from dashboard.snapshot import build_snapshot, snapshot_version, source_provenance
 
 
 COMPLETED_REPORT = {
@@ -26,15 +25,20 @@ COMPLETED_REPORT = {
 
 def write_completed_report(repo: Path, *, passed: int, failed: int) -> None:
     """Replace fixture report counts with complete dashboard evidence."""
-    report = {
-        **COMPLETED_REPORT,
-        "stats": {
-            **COMPLETED_REPORT["stats"],
-            "expected": passed,
-            "unexpected": failed,
-        },
+    report = completed_report(repo)
+    report["stats"] = {
+        **COMPLETED_REPORT["stats"],
+        "expected": passed,
+        "unexpected": failed,
     }
     (repo / "reports" / "last-run.json").write_text(json.dumps(report), encoding="utf-8")
+
+
+def completed_report(repo: Path) -> dict:
+    """Return complete report evidence stamped with its producing sources."""
+    report = json.loads(json.dumps(COMPLETED_REPORT))
+    report["config"]["metadata"]["testah"].update(source_provenance(repo))
+    return report
 
 
 def fixture_repository(
@@ -71,32 +75,6 @@ def fixture_repository(
     )
     playwright_config = repo / "playwright.config.ts"
     playwright_config.write_text("export default {};\n", encoding="utf-8")
-    if with_report:
-        (repo / "reports").mkdir()
-        report_path = repo / "reports" / "last-run.json"
-        if report_case == "malformed":
-            report_path.write_text("not json", encoding="utf-8")
-        else:
-            report = COMPLETED_REPORT
-            if report_case == "incomplete":
-                report = {"stats": {"expected": 33}}
-            elif report_case == "unattributed":
-                report = {
-                    **COMPLETED_REPORT,
-                    "config": {
-                        "metadata": {
-                            "testah": {"baseURL": "https://unknown.example"}
-                        }
-                    },
-                }
-            report_path.write_text(json.dumps(report), encoding="utf-8")
-            if report_case == "older-than-sources":
-                source_path = repo / "tests" / "specs" / "smoke.spec.ts"
-                newer_time = report_path.stat().st_mtime + 1
-                os.utime(source_path, (newer_time, newer_time))
-            if report_case == "older-than-playwright-config":
-                newer_time = report_path.stat().st_mtime + 1
-                os.utime(playwright_config, (newer_time, newer_time))
     subprocess.run(["git", "init", "-b", "master"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "Fixture User"], cwd=repo, check=True)
     subprocess.run(
@@ -104,6 +82,25 @@ def fixture_repository(
     )
     subprocess.run(["git", "add", "."], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-m", "fixture"], cwd=repo, check=True)
+    if with_report:
+        (repo / "reports").mkdir()
+        report_path = repo / "reports" / "last-run.json"
+        if report_case == "malformed":
+            report_path.write_text("not json", encoding="utf-8")
+        else:
+            report = completed_report(repo)
+            if report_case == "incomplete":
+                report = {"stats": {"expected": 33}}
+            elif report_case == "unattributed":
+                report["config"]["metadata"]["testah"]["baseURL"] = (
+                    "https://unknown.example"
+                )
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            if report_case == "older-than-sources":
+                source_path = repo / "tests" / "specs" / "smoke.spec.ts"
+                source_path.write_text("test('changed', () => {});\n", encoding="utf-8")
+            if report_case == "older-than-playwright-config":
+                playwright_config.write_text("export default { changed: true };\n")
     return repo
 
 
@@ -137,7 +134,7 @@ def test_snapshot_rejects_non_standard_json_constants(constant, tmp_path):
     """Non-standard JSON numbers make the report unavailable in the snapshot."""
     repo = fixture_repository(tmp_path, with_report=True)
     report_path = repo / "reports" / "last-run.json"
-    report = json.dumps(COMPLETED_REPORT).replace("14404.824", constant, 1)
+    report = json.dumps(completed_report(repo)).replace("14404.824", constant, 1)
     report_path.write_text(report, encoding="utf-8")
 
     target = build_snapshot(repo)["targets"][0]
@@ -161,7 +158,7 @@ def test_snapshot_rejects_structurally_invalid_report_values(field, value, tmp_p
     """Invalid count, duration, and timestamp values stay incomplete, not healthy."""
     repo = fixture_repository(tmp_path, with_report=True)
     report = {
-        **COMPLETED_REPORT,
+        **completed_report(repo),
         "stats": {**COMPLETED_REPORT["stats"], field: value},
     }
     (repo / "reports" / "last-run.json").write_text(
@@ -183,7 +180,7 @@ def test_top_level_playwright_errors_prevent_completed_evidence(tmp_path):
     """A runner-level failure cannot be presented as a completed test run."""
     repo = fixture_repository(tmp_path, with_report=True)
     report = {
-        **COMPLETED_REPORT,
+        **completed_report(repo),
         "errors": [{"message": "global setup failed"}],
     }
     (repo / "reports" / "last-run.json").write_text(
@@ -205,7 +202,7 @@ def test_snapshot_normalizes_iso_start_time(tmp_path):
     """A valid report timestamp is returned as a normalized UTC ISO timestamp."""
     repo = fixture_repository(tmp_path, with_report=True)
     report = {
-        **COMPLETED_REPORT,
+        **completed_report(repo),
         "stats": {
             **COMPLETED_REPORT["stats"],
             "startTime": "2026-08-28T19:11:39.230+02:00",
@@ -270,7 +267,7 @@ def test_incomplete_report_is_only_attached_to_its_recorded_target(tmp_path):
     """Partial statistics never leak onto another configured target."""
     repo = fixture_repository(tmp_path, with_report=True, target_count=2)
     report = {
-        **COMPLETED_REPORT,
+        **completed_report(repo),
         "stats": {**COMPLETED_REPORT["stats"], "expected": None},
     }
     (repo / "reports" / "last-run.json").write_text(
@@ -293,7 +290,7 @@ def test_recorded_target_metadata_wins_over_unrelated_report_urls(tmp_path):
     """Failure text mentioning another target cannot override producer metadata."""
     repo = fixture_repository(tmp_path, with_report=True, target_count=2)
     report = {
-        **COMPLETED_REPORT,
+        **completed_report(repo),
         "suites": [{"title": "https://other.example.com"}],
     }
     (repo / "reports" / "last-run.json").write_text(
@@ -331,3 +328,37 @@ def test_source_deletion_marks_the_latest_report_stale(relative_path, tmp_path):
     (repo / relative_path).unlink()
 
     assert build_snapshot(repo)["targets"][0]["latest_run"]["state"] == "stale"
+
+
+def test_copying_an_old_report_later_does_not_make_it_current(tmp_path):
+    """Producer provenance wins over the destination report's modification time."""
+    repo = fixture_repository(tmp_path, with_report=True)
+    old_report = (repo / "reports" / "last-run.json").read_bytes()
+    (repo / "tests" / "specs" / "smoke.spec.ts").write_text(
+        "test('changed smoke', () => {});\n", encoding="utf-8"
+    )
+
+    (repo / "reports" / "last-run.json").write_bytes(old_report)
+
+    assert build_snapshot(repo)["targets"][0]["latest_run"]["state"] == "stale"
+
+
+def test_producer_and_dashboard_compute_the_same_source_provenance(tmp_path):
+    """The Playwright producer and Python consumer share one fingerprint contract."""
+    repo = fixture_repository(tmp_path, with_report=False)
+    module_url = (
+        Path(__file__).resolve().parents[1] / "testah_source_provenance.mjs"
+    ).as_uri()
+    script = (
+        f"import {{ sourceProvenance }} from {json.dumps(module_url)}; "
+        "console.log(JSON.stringify(sourceProvenance(process.argv[1])))"
+    )
+
+    producer = subprocess.run(
+        ["node", "--input-type=module", "--eval", script, str(repo)],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert json.loads(producer.stdout) == source_provenance(repo)

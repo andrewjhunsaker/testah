@@ -24,7 +24,13 @@ def build_snapshot(root: Path, checked_at: datetime | None = None) -> dict[str, 
     targets = _read_targets(root)
     report_path = root / REPORT_PATH
     report_state, report = _read_report(report_path)
-    report_is_stale = report_state == "completed" and _sources_are_newer(root, report_path)
+    current_provenance = source_provenance(root)
+    report_provenance = _report_source_provenance(report) if report else None
+    report_is_stale = (
+        report_state == "completed"
+        and report_provenance is not None
+        and report_provenance != current_provenance
+    )
     attributed_target = _attributed_target(report, targets) if report else None
 
     normalized_targets = []
@@ -38,8 +44,11 @@ def build_snapshot(root: Path, checked_at: datetime | None = None) -> dict[str, 
             elif attributed_target != target["key"]:
                 state = "never-run"
                 target_report = None
-            elif state == "completed" and report_is_stale:
-                state = "stale"
+            elif state == "completed":
+                if report_provenance is None:
+                    state = "partial"
+                elif report_is_stale:
+                    state = "stale"
         normalized_targets.append(
             {
                 **target,
@@ -51,6 +60,15 @@ def build_snapshot(root: Path, checked_at: datetime | None = None) -> dict[str, 
         "checked_at": _iso_timestamp(checked_at or datetime.now(timezone.utc)),
         "repository": _repository_identity(root),
         "targets": normalized_targets,
+    }
+
+
+def source_provenance(root: Path) -> dict[str, str | None]:
+    """Return the revision and content identity of the sources a run exercises."""
+    root = root.resolve()
+    return {
+        "sourceCommit": _git(root, "rev-parse", "HEAD"),
+        "sourceFingerprint": _source_fingerprint(root),
     }
 
 
@@ -166,6 +184,28 @@ def _reported_target_url(report: dict[str, Any]) -> str | None:
     return base_url if isinstance(base_url, str) else None
 
 
+def _report_source_provenance(
+    report: dict[str, Any],
+) -> dict[str, str | None] | None:
+    config = report.get("config")
+    if not isinstance(config, dict):
+        return None
+    metadata = config.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    testah = metadata.get("testah")
+    if not isinstance(testah, dict):
+        return None
+    source_commit = testah.get("sourceCommit")
+    source_fingerprint = testah.get("sourceFingerprint")
+    if not isinstance(source_commit, str) or not isinstance(source_fingerprint, str):
+        return None
+    return {
+        "sourceCommit": source_commit,
+        "sourceFingerprint": source_fingerprint,
+    }
+
+
 def _normal_url(value: str) -> str:
     return value.rstrip("/")
 
@@ -228,37 +268,40 @@ def _parse_iso_timestamp(value: object) -> datetime | None:
         return None
 
 
-def _sources_are_newer(root: Path, report_path: Path) -> bool:
-    try:
-        report_time = report_path.stat().st_mtime_ns
-    except OSError:
-        return False
-    for path in _source_paths(root):
-        try:
-            if path.stat().st_mtime_ns > report_time:
-                return True
-        except OSError:
-            return True
-    return False
-
-
-def _source_paths(root: Path) -> list[Path]:
-    paths = []
+def _source_fingerprint(root: Path) -> str:
+    entries: list[tuple[str, bytes | None]] = []
     for relative_path in SOURCE_FILES:
-        path = root / relative_path
-        paths.append(path if path.is_file() else path.parent)
+        entries.append(_source_entry(root, relative_path))
     for directory in SOURCE_DIRECTORIES:
         source_root = root / directory
         if source_root.is_dir():
-            paths.append(source_root)
-            paths.extend(
-                path
+            entries.extend(
+                _source_entry(root, path.relative_to(root))
                 for path in source_root.rglob("*")
-                if path.is_file() or path.is_dir()
+                if path.is_file()
             )
         else:
-            paths.append(source_root.parent)
-    return paths
+            entries.append((f"{directory.as_posix()}/", None))
+
+    digest = hashlib.sha256()
+    for relative_path, content in sorted(entries):
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(b"missing" if content is None else b"file")
+        digest.update(b"\0")
+        if content is not None:
+            digest.update(content)
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _source_entry(root: Path, relative_path: Path) -> tuple[str, bytes | None]:
+    path = root / relative_path
+    try:
+        content = path.read_bytes() if path.is_file() else None
+    except OSError:
+        content = None
+    return (relative_path.as_posix(), content)
 
 
 def _evidence_fingerprint_entries(root: Path) -> list[tuple[str, int | None, int | None]]:

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 import { expect, test } from '@playwright/test'
 
+import { sourceProvenance } from '../../scripts/testah_source_provenance.mjs'
 import { CurrentSnapshotPage } from '../../tests/pages/CurrentSnapshotPage'
 
 type RunningDashboard = {
@@ -42,8 +43,6 @@ function createFixtureRepository(
   mkdirSync(join(root, 'requirements'))
   writeFileSync(join(root, 'requirements', 'smoke.md'), '# Smoke requirement\n')
   writeFileSync(join(root, 'playwright.config.ts'), 'export default {}\n')
-  mkdirSync(join(root, 'reports'))
-  writeCompletedReport(root, { passed: 33, failed: 1 })
   execFileSync('git', ['init', '--initial-branch=master'], { cwd: root })
   execFileSync('git', ['add', '.'], { cwd: root })
   execFileSync(
@@ -59,6 +58,8 @@ function createFixtureRepository(
     ],
     { cwd: root },
   )
+  mkdirSync(join(root, 'reports'))
+  writeCompletedReport(root, { passed: 33, failed: 1 })
   return root
 }
 
@@ -112,7 +113,12 @@ function writeCompletedReport(
         startTime: '2026-09-01T12:00:00.000Z',
       },
       config: {
-        metadata: { testah: { baseURL: 'https://app.example.test' } },
+        metadata: {
+          testah: {
+            baseURL: 'https://app.example.test',
+            ...sourceProvenance(root),
+          },
+        },
       },
     }),
   )
