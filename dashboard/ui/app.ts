@@ -27,6 +27,7 @@ type Snapshot = {
 
 type SnapshotVersion = {
   version: string;
+  checked_at: string;
 };
 
 const checkedAt = requiredElement("checked-at");
@@ -85,13 +86,14 @@ async function refreshWhenChanged(): Promise<void> {
   activeRefreshController = controller;
   refreshInFlight = true;
   try {
-    const version = await fetchVersion(controller.signal);
+    const versionStatus = await fetchVersion(controller.signal);
     if (!isCurrentRefresh(refreshGeneration)) return;
-    if (version !== currentVersion) {
+    if (versionStatus.version !== currentVersion) {
       if (await renderSnapshot(refreshGeneration, controller.signal)) {
-        currentVersion = version;
+        currentVersion = versionStatus.version;
       }
     } else if (hasSnapshot) {
+      checkedAt.textContent = `Last checked: ${formatTime(versionStatus.checked_at)}`;
       loadError.hidden = true;
     }
   } catch {
@@ -108,12 +110,17 @@ async function refreshWhenChanged(): Promise<void> {
   }
 }
 
-async function fetchVersion(signal: AbortSignal): Promise<string> {
+async function fetchVersion(signal: AbortSignal): Promise<SnapshotVersion> {
   const response = await fetch("/api/version", { cache: "no-store", signal });
   if (!response.ok) throw new Error(`Version request failed (${response.status})`);
   const body = await response.json() as SnapshotVersion;
-  if (typeof body.version !== "string") throw new Error("Version response is invalid");
-  return body.version;
+  if (
+    typeof body.version !== "string" ||
+    typeof body.checked_at !== "string"
+  ) {
+    throw new Error("Version response is invalid");
+  }
+  return body;
 }
 
 async function renderSnapshot(

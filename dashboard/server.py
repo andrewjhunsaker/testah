@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,7 +23,12 @@ def make_server(root: Path, port: int = 0) -> ThreadingHTTPServer:
             if path == "/api/snapshot":
                 self._send_json(build_snapshot(repository_root))
             elif path == "/api/version":
-                self._send_json({"version": snapshot_version(repository_root)})
+                self._send_json(
+                    {
+                        "version": snapshot_version(repository_root),
+                        "checked_at": _checked_at(),
+                    }
+                )
             elif path == "/":
                 self._send_file(ui_root / "index.html", "text/html; charset=utf-8")
             elif path == "/styles.css":
@@ -74,3 +80,11 @@ def make_server(root: Path, port: int = 0) -> ThreadingHTTPServer:
             self.end_headers()
 
     return ThreadingHTTPServer(("127.0.0.1", port), DashboardHandler)
+
+
+def _checked_at() -> str:
+    return (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z")
+    )

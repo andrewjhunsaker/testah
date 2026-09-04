@@ -256,6 +256,43 @@ test('Overview clears the unavailable notice when version polling recovers', asy
   }
 })
 
+test('Overview updates last checked after an unchanged successful poll', async ({
+  page,
+}) => {
+  const fixtureRoot = createFixtureRepository()
+  const dashboard = launchDashboard(fixtureRoot)
+  const snapshot = new CurrentSnapshotPage(page)
+  let versionRequests = 0
+
+  await page.route('**/api/version', async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    versionRequests += 1
+    await route.fulfill({
+      response,
+      json: {
+        ...body,
+        checked_at:
+          versionRequests === 1
+            ? '2026-09-01T12:00:00.000Z'
+            : '2030-01-02T03:04:05.000Z',
+      },
+    })
+  })
+
+  try {
+    await snapshot.installClock()
+    await snapshot.goto(await dashboard.url)
+    await expect(snapshot.lastChecked().filter({ hasText: '2030' })).toHaveCount(0)
+
+    await snapshot.advanceTime(2_000)
+
+    await expect(snapshot.lastChecked().filter({ hasText: '2030' })).toBeVisible()
+  } finally {
+    await cleanup(dashboard, fixtureRoot)
+  }
+})
+
 test('Overview pauses refresh while hidden and refreshes when visible', async ({
   page,
 }) => {
