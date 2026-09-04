@@ -135,6 +135,7 @@ def test_master_pr_gate_accepts_only_same_repo_staging_promotions():
     workflow = (ROOT / ".github/workflows/codex-review.yml").read_text()
 
     assert "branches: [staging, master]" in workflow
+    assert "types: [opened, reopened, synchronize, ready_for_review]" in workflow
     assert "\n  promotion-source:\n" in workflow
     assert "github.event.pull_request.base.ref == 'master'" in workflow
     assert "github.event.pull_request.head.repo.full_name" in workflow
@@ -156,6 +157,27 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
     workflow = (ROOT / ".github/workflows/promotion-pr.yml").read_text()
 
     assert "push:\n    branches: [staging]" in workflow
+    assert "keep-draft-current:\n    name: keep-draft-current" in workflow
+    assert "actions: read" in workflow
+    assert "PROMOTION_RUN_ID: ${{ github.run_id }}" in workflow
+    assert "PROMOTION_RUN_ATTEMPT: ${{ github.run_attempt }}" in workflow
+    assert '"$PROMOTION_RUN_ATTEMPT" -gt 1' in workflow
+    assert "actions/runs/${PROMOTION_RUN_ID}/attempts/1" in workflow
+    assert "git/trees/master?recursive=1" in workflow
+    assert ".github/workflows/codex-review.yml" in workflow
+    assert "trusted default-branch ready validator is already active" in workflow
+    assert '"$first_attempt_conclusion" != "success"' in workflow
+    assert '"$first_attempt_head_sha" != "$STAGING_SHA"' in workflow
+    assert 'current_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)' in workflow
+    assert '"$current_pr_head" != "$STAGING_SHA"' in workflow
+    assert "promotion PR head no longer matches this staging run" in workflow
+    assert 'ready_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)' in workflow
+    assert '"$ready_pr_head" != "$STAGING_SHA"' in workflow
+    assert "promotion PR advanced while restoring ready state" in workflow
+    assert '"$pr_head_sha" != "$STAGING_SHA"' in workflow
+    assert "promotion PR advanced before source validation" in workflow
+    assert "unsafe workflow rerun returned promotion PR" in workflow
+    assert "validating ready promotion PR" in workflow
     assert "pull-requests: write" in workflow
     assert "checks: write" in workflow
     assert "github.sha" in workflow

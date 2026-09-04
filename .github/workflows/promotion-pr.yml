@@ -5,17 +5,21 @@ on:
     branches: [staging]
 
 permissions:
+  actions: read
   checks: write
   contents: read
   pull-requests: write
 
 jobs:
   keep-draft-current:
+    name: keep-draft-current
     runs-on: ubuntu-latest
     steps:
       - name: Open or refresh the bot-authored draft promotion PR
         env:
           GH_TOKEN: ${{ github.token }}
+          PROMOTION_RUN_ID: ${{ github.run_id }}
+          PROMOTION_RUN_ATTEMPT: ${{ github.run_attempt }}
           STAGING_SHA: ${{ github.sha }}
         run: |
           OWNER=${GITHUB_REPOSITORY%%/*}
@@ -26,8 +30,44 @@ jobs:
           if [ -n "$existing" ]; then
             read -r number is_draft <<< "$existing"
             if [ "$is_draft" = "false" ]; then
-              gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
-              echo "returned promotion PR #$number to draft for the new staging head"
+              if [ "$PROMOTION_RUN_ATTEMPT" -gt 1 ]; then
+                gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+                master_has_ready_validator=$(gh api \
+                  "repos/${GITHUB_REPOSITORY}/git/trees/master?recursive=1" \
+                  --jq '[.tree[].path] | index(".github/workflows/codex-review.yml") != null')
+                if [ "$master_has_ready_validator" = "true" ]; then
+                  echo "workflow rerun refused: trusted default-branch ready validator is already active" >&2
+                  exit 1
+                fi
+                if ! first_attempt=$(gh api \
+                  "repos/${GITHUB_REPOSITORY}/actions/runs/${PROMOTION_RUN_ID}/attempts/1" \
+                  --jq '[.conclusion, .head_sha] | @tsv'); then
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: attempt 1 could not be verified" >&2
+                  exit 1
+                fi
+                IFS=$'\t' read -r first_attempt_conclusion first_attempt_head_sha <<< "$first_attempt"
+                if [ "$first_attempt_conclusion" != "success" ] \
+                  || [ "$first_attempt_head_sha" != "$STAGING_SHA" ]; then
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: attempt 1 did not validate this staging SHA" >&2
+                  exit 1
+                fi
+                current_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)
+                if [ "$current_pr_head" != "$STAGING_SHA" ]; then
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: promotion PR head no longer matches this staging run" >&2
+                  exit 1
+                fi
+                gh pr ready "$number" --repo "$GITHUB_REPOSITORY"
+                ready_pr_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .head.sha)
+                if [ "$ready_pr_head" != "$STAGING_SHA" ]; then
+                  gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: promotion PR advanced while restoring ready state" >&2
+                  exit 1
+                fi
+                echo "validating ready promotion PR #$number on workflow rerun"
+              else
+                gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+                echo "returned promotion PR #$number to draft for the new staging head"
+              fi
             else
               echo "draft promotion PR #$number already tracks staging"
             fi
@@ -50,6 +90,11 @@ jobs:
             pr_state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" \
               --jq '[.head.sha, (.merge_commit_sha // "")] | @tsv')
             IFS=$'\t' read -r pr_head_sha merge_sha <<< "$pr_state"
+            if [ "$pr_head_sha" != "$STAGING_SHA" ]; then
+              gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+              echo "promotion PR advanced before source validation; returned it to draft" >&2
+              exit 1
+            fi
             if [ "$pr_head_sha" = "$STAGING_SHA" ] && [ -n "$merge_sha" ]; then
               break
             fi
