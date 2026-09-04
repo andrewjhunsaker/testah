@@ -16,10 +16,13 @@ const quotedTargetUrl = `'${targetUrl.replaceAll('\\', '\\\\').replaceAll("'", "
 const declaration =
   `const testahBaseURL =\n` +
   `  process.env.TESTAH_BASE_URL ?? ${quotedTargetUrl}`
-const declarationPattern =
-  /const testahBaseURL\s*=\s*\n?\s*process\.env\.TESTAH_BASE_URL\s*\?\?\s*['"][^'"\r\n]*['"]/
-const inlineBaseUrlPattern =
-  /baseURL:\s*process\.env\.TESTAH_BASE_URL\s*\?\?\s*['"][^'"\r\n]*['"]/
+const quotedUrlPattern = String.raw`(?:'(?:\\.|[^'\\\r\n])*'|"(?:\\.|[^"\\\r\n])*")`
+const declarationPattern = new RegExp(
+  String.raw`const testahBaseURL\s*=\s*\n?\s*process\.env\.TESTAH_BASE_URL\s*\?\?\s*${quotedUrlPattern}`,
+)
+const inlineBaseUrlPattern = new RegExp(
+  String.raw`baseURL:\s*process\.env\.TESTAH_BASE_URL\s*\?\?\s*${quotedUrlPattern}`,
+)
 
 let config = readFileSync(configPath, 'utf8')
 if (declarationPattern.test(config)) {

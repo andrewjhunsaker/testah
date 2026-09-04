@@ -58,7 +58,7 @@ def test_setup_adds_report_metadata_to_the_template_playwright_config(tmp_path):
     helper = ROOT / "scripts" / "configure_playwright_target.mjs"
 
     subprocess.run(
-        ["node", str(helper), "https://new.example.test", str(config_path)],
+        ["node", str(helper), "https://new.example.test/it's", str(config_path)],
         check=True,
     )
     subprocess.run(
@@ -67,7 +67,11 @@ def test_setup_adds_report_metadata_to_the_template_playwright_config(tmp_path):
     )
 
     configured = config_path.read_text(encoding="utf-8")
-    assert "process.env.TESTAH_BASE_URL ?? 'https://newer.example.test'" in configured
+    assert (
+        "process.env.TESTAH_BASE_URL ?? 'https://newer.example.test'\n\n"
+        "export default defineConfig({"
+    ) in configured
+    assert "it\\'s" not in configured
     assert configured.count("const testahBaseURL =") == 1
     assert configured.count("metadata:") == 1
     assert configured.count("baseURL: testahBaseURL") == 2
