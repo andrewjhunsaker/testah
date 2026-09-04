@@ -16,7 +16,7 @@ Run every command from the repo root.
 | 1 | **Scout** — `agents/scout.md` | human, on demand | `targets.yaml`, existing `page-maps/` | `page-maps/<target>/<slug>/{page.md,page.json,features.md,perf.json,meta.json}`, `changed-pages.json`, `tickets/drafts/*.md` (`type: test-feature`) |
 | 2 | **Author Mode A** — `agents/author.md` | human, after the Scout gate | page-maps, `changed-pages.json`, `RULES.md`, approved feature tickets | `requirements/<target>/<slug>/<feature>.md`, `tests/pages/*.ts`, `tests/specs/*.spec.ts` |
 | 2R | **Reviewer** — `agents/reviewer.md` | the Author, as a **fresh subagent** | the Author's diff, `requirements/`, `RULES.md` | `reviews/<date>.md` (`-2`, `-3` for repeat rounds) |
-| 3 | **Agentless run** — `pnpm exec playwright test` | CI on push/PR, or a human locally | `tests/`, `playwright.config.ts` | `reports/last-run.json`, `reports/html/` (both gitignored) |
+| 3 | **Agentless run** — `pnpm exec playwright test` | CI on PRs into `staging`, or a human locally | `tests/`, `playwright.config.ts` | `reports/last-run.json`, `reports/html/` (both gitignored) |
 | 4 | **Author Mode B** — `agents/author.md` | human, per run that produced failures | `reports/last-run.json`, traces, page-map history, git log | `triage/<run-id>.md`, `flake-history.json`, `docs/coverage/<target>.{html,md}` (regenerated) |
 | 5 | **Steward** — `agents/steward.md` | human, after triage | triage, reviews, page-maps, `features.md`, drafts, `flake-history.json` | `tickets/drafts/*.md` (`product-bug` / `framework-update`), `critiques/<date>.md`, `docs/` |
 
@@ -51,17 +51,59 @@ results in the last 10 runs**; silence means no crossing. It is idempotent —
 reprocessing the same report under the same run-id does not double-count.
 
 CI is `.github/workflows/tests.yml`: `scripts-unit` (pytest) and `e2e`
-(Playwright, chromium), on pushes to `staging` and `master` and on every PR.
+(Playwright, chromium), on pull requests targeting `staging` only.
 When the generic dashboard is present, the separate `dashboard` job runs its
 typecheck and loopback-browser suite. `e2e` uploads `reports/` as the
 `playwright-report` artifact even on failure — that artifact is Mode B's input.
 
 ## Staging promotion
 
-Feature and framework PRs land on `staging` first. After the combined branch is
-green and has been exercised locally, promote it with a PR from `staging` to
-`master`; the human remains the merge gate. A push to `master` is therefore a
-validated release event and triggers the project-data-free `template` sync.
+Feature and framework work must start on a feature branch and enter `staging`
+through a PR. GitHub branch protection rejects direct pushes to `staging` and
+requires the `scripts-unit`, `e2e`, and `dashboard` checks. Once those checks
+pass, request `@codex review`; address consequential findings and request a
+follow-up review when they require a new commit. The agent may merge the PR into
+`staging` only after the required `codex-review` status confirms that the exact
+head SHA has either a zero-finding Codex review event or a trusted clean-result
+comment whose abbreviated commit ID resolves through GitHub to that exact full
+SHA.
+
+For an existing repository migrating to these gates, the first staging PR that
+introduces the trusted `pull_request_target` workflow cannot emit its own
+`codex-review` status: GitHub loads that workflow from the default branch, where
+it does not exist yet. Verify that exact-head Codex review manually. The
+staging-push workflow emits `promotion-source` for the first promotion without
+an exception. Once the gate workflow reaches `master`, the exception is gone.
+Repositories initialized from `template` have the workflow in their first
+human-created `master` and never need this migration exception.
+
+Each merge to `staging` makes `.github/workflows/promotion-pr.yml` open a
+bot-authored draft promotion PR to `master`, or return the existing promotion
+to draft while it tracks the latest staging commit. That trusted staging-push
+workflow also publishes a `promotion-source` check on the promotion PR's unique
+test-merge commit. This avoids relying on the follow-on event from a
+`GITHUB_TOKEN`-created PR and prevents another PR that happens to reference the
+same head commit from sharing or poisoning the result. The master-target gate
+requires both this repository's `staging` branch and the
+`github-actions[bot]` author, publishing a failing PR-specific check for every
+other source or author. Automation refuses to reuse a non-bot promotion PR.
+After the combined branch has been exercised locally, an agent may mark that
+draft ready and must stop. GitHub branch protection rejects direct pushes to
+`master`, including administrator pushes, requires `promotion-source`, and
+requires one approval. Because the PR author is `github-actions[bot]`, the human
+owner can approve it; an agent operating as that owner cannot substitute an
+unreviewed self-authored promotion. Merge commits are the repository's only
+enabled PR merge method, preserving the long-lived `staging` head as an
+ancestor of released `master`. A new staging commit dismisses an older approval
+and requires the human to approve the latest head. The separate
+last-push-approval option stays off because agent staging merges use the human
+owner's GitHub identity and would otherwise disqualify that sole owner. The
+promotion does not rerun CI or request another Codex review: those gates already
+ran on the constituent staging PRs.
+
+The merge to `master` is the validated release event. It triggers the
+project-data-free `template` sync; that workflow copies only the exact paths in
+`scripts/template_paths.txt`.
 
 ## Gates in PRODUCTION mode
 
@@ -99,9 +141,8 @@ lands in **one** end review. Live deviations, and what they cost:
 - **No per-ticket approval yet.** All drafts sit at `status: draft`; the
   Linear **workspace** `testah` exists (linear.app/ah-lineartestagent) but
   the MCP session must be OAuth'd to it before the Steward can file.
-- **Remote exists since 2026-08-29** (github.com/andrewjhunsaker/testah);
-  branch-and-PR discipline (`scout/<date>`, `author/<date>`) applies from
-  here on.
+- **A git remote is configured**; branch-and-PR discipline
+  (`scout/<date>`, `author/<date>`) applies from here on.
 - **The seed failure was deleted 2026-08-29** after triage proved the path;
   the suite is fully green.
 - **Suite runs against live staging.** `playwright.config.ts` supplies the
@@ -117,12 +158,25 @@ the table above — criteria first (done 2026-08-29).
 ## Setup
 
 New project? `bash setup.sh` after cloning — an interactive wizard that
-connects a git remote (GitHub/GitLab/Bitbucket), installs the toolchain
-(pnpm + Playwright, uv + crawl4ai), writes your first target into
-`targets.yaml` (and the Playwright baseURL), optionally connects Linear
-(validates the API key against api.linear.app, stores it in the gitignored
-`.env`), and prints the command menu. Skippable per-step, safe to re-run;
-it refuses to clobber a customized `targets.yaml` without asking.
+verifies or replaces the existing `origin` (important when cloning the upstream
+`template` branch); connects a GitHub project remote; requires a
+human-initialized remote `master`; and creates only `staging` from that branch
+when needed. When replacing `origin`, setup first pushes the allowed `template`
+branch so the human can create `master` from the same history in GitHub. It
+widens `origin` from a single-branch clone to the normal all-branches fetch
+refspec, refreshes the remote-tracking branches, makes `master` the verified
+GitHub default, and never creates or pushes `master`. GitHub is required for the
+current PR protections, Actions checks, Codex review, and issue workflow. The
+wizard then provisions the canonical GitHub triage labels and branch protections
+idempotently, binding every required check to the GitHub Actions app that
+produces it, enabling merge commits and disabling squash/rebase PR merges. It
+stops and refuses to report the repository ready if either branch is missing,
+the default or merge strategy is wrong, or protection cannot be applied. The
+wizard then installs the toolchain (pnpm + Playwright, uv + crawl4ai), writes
+your first target into `targets.yaml` (and the Playwright baseURL), optionally
+connects Linear (validates the API key against api.linear.app and stores it in
+the gitignored `.env`), and prints the command menu. Skippable per-step, safe to
+re-run; it refuses to clobber a customized `targets.yaml` without asking.
 
 ## The Claude Code harness
 
@@ -156,9 +210,13 @@ configuration for it (`CLAUDE.md` + `.claude/`). Everything in it POINTS at
   toolchain).
 - **Personal overrides** go in `.claude/settings.local.json` (gitignored) —
   never in the committed settings.
+- **Delivery guardrails** (`AGENTS.md` plus GitHub branch protection): agents
+  work through feature PRs into `staging`, request one Codex review there, and
+  stop at the human-only `staging` → `master` promotion PR. Direct pushes to
+  both protected branches are mechanically rejected.
 - **Standing rule:** any harness change updates THIS section in the same
-  commit, and framework paths (including `.claude/` and `CLAUDE.md`) sync to
-  the `template` branch automatically.
+  commit, and framework paths (including `.claude/`, `AGENTS.md`, and
+  `CLAUDE.md`) sync to the `template` branch automatically.
 
 Other LLM harnesses ignore all of this and use `agents/*.md` directly (see
 README "Running the agents on your LLM platform").
@@ -200,8 +258,8 @@ flake-history. New adopters clone it and point `targets.yaml` at their app.
 
 Maintenance is AUTOMATED: `.github/workflows/template-sync.yml` runs on
 every push to `master` and checks out only framework paths onto `template`
-(agents, scripts, dashboard, .github, .mcp.json, package/lock files, RULES.md,
-README, `docs/spec.md`, `docs/running-the-loop.md`, and the dashboard's exact
+(agents, scripts, dashboard, .github, AGENTS.md, .mcp.json, package/lock files,
+RULES.md, README, `docs/spec.md`, `docs/running-the-loop.md`, and the dashboard's exact
 POM/requirement/page map).
 Manual fallback, same paths after the dashboard exists:
 

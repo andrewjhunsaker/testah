@@ -11,8 +11,13 @@ the message bus; the human gates every consequential step.
   agents never edit them (permission ask-gates enforce this; do not work
   around them via Bash).
 - No AI attribution in commits or PRs.
-- Branch per pass (`scout/<date>`, `author/<date>`, ISO dates) and open a
-  PR; the human merges.
+- Work on a feature branch (`scout/<date>`, `author/<date>`, or another
+  descriptive name) and open a PR into `staging`.
+- Never push directly to `master`. Never merge into `master`: GitHub Actions
+  maintains a bot-authored draft `staging` → `master` promotion PR. After local
+  validation, mark it ready and stop for the human to approve and merge it.
+- Follow the delivery and review policy in `AGENTS.md`, including the single
+  staging CI + Codex review gate.
 - Agent instructions live in `agents/*.md` — the single, harness-agnostic
   source of truth. Never restate them elsewhere; point to them.
 - Any harness change (`.claude/`, `CLAUDE.md`, `.mcp.json`, hooks) updates
@@ -34,7 +39,8 @@ the message bus; the human gates every consequential step.
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues for `andrewjhunsaker/testah`. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues for the repository identified by
+`git remote`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

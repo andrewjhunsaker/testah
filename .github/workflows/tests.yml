@@ -1,8 +1,7 @@
 name: tests
 on:
-  push:
-    branches: [master, staging]
   pull_request:
+    branches: [staging]
 
 permissions:
   contents: read
@@ -46,11 +45,16 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - id: availability
         shell: bash
         run: |
           if [ -f dashboard.playwright.config.ts ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
+          elif git cat-file -e "${{ github.event.pull_request.base.sha }}:dashboard.playwright.config.ts" 2>/dev/null; then
+            echo "dashboard config was removed from this staging PR" >&2
+            exit 1
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
