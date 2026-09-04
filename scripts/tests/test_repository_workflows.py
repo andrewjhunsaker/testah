@@ -20,14 +20,28 @@ def test_ci_runs_once_on_pull_requests_into_staging():
     assert "dashboard config was removed" in workflow
 
 
-def test_playwright_report_persists_the_effective_target_url():
-    config = (ROOT / "playwright.config.ts").read_text()
+def test_playwright_report_persists_the_effective_target_url(tmp_path):
+    config_path = tmp_path / "playwright.config.ts"
+    config_path.write_text(
+        (ROOT / "playwright.config.ts").read_text(), encoding="utf-8"
+    )
+    subprocess.run(
+        [
+            "node",
+            str(ROOT / "scripts" / "configure_playwright_target.mjs"),
+            "https://configured.example.test",
+            str(config_path),
+        ],
+        check=True,
+    )
+    config = config_path.read_text(encoding="utf-8")
 
     assert "const testahBaseURL =" in config
     assert "metadata:" in config
     assert "testahBaseURL" in config
     assert "use: {" in config
     assert config.count("baseURL: testahBaseURL") == 2
+    assert "https://configured.example.test" in config
 
 
 def test_setup_adds_report_metadata_to_the_template_playwright_config(tmp_path):

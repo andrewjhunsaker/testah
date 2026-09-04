@@ -38,6 +38,8 @@ let refreshInFlight = false;
 let pollingTimer: number | undefined;
 let hasSnapshot = false;
 let visibilityGeneration = 0;
+let activeRefreshController: AbortController | undefined;
+let refreshQueued = false;
 
 void initialize();
 
@@ -53,6 +55,7 @@ function onVisibilityChange(): void {
     startPolling();
   } else {
     visibilityGeneration += 1;
+    refreshQueued = false;
     stopPolling();
   }
 }
@@ -63,41 +66,62 @@ function startPolling(): void {
 }
 
 function stopPolling(): void {
-  if (pollingTimer === undefined) return;
-  window.clearInterval(pollingTimer);
-  pollingTimer = undefined;
+  activeRefreshController?.abort();
+  if (pollingTimer !== undefined) {
+    window.clearInterval(pollingTimer);
+    pollingTimer = undefined;
+  }
 }
 
 async function refreshWhenChanged(): Promise<void> {
-  if (document.visibilityState !== "visible" || refreshInFlight) return;
+  if (document.visibilityState !== "visible") return;
+  if (refreshInFlight) {
+    refreshQueued = true;
+    return;
+  }
+  refreshQueued = false;
   const refreshGeneration = visibilityGeneration;
+  const controller = new AbortController();
+  activeRefreshController = controller;
   refreshInFlight = true;
   try {
-    const version = await fetchVersion();
+    const version = await fetchVersion(controller.signal);
     if (!isCurrentRefresh(refreshGeneration)) return;
     if (version !== currentVersion) {
-      if (await renderSnapshot(refreshGeneration)) currentVersion = version;
+      if (await renderSnapshot(refreshGeneration, controller.signal)) {
+        currentVersion = version;
+      }
     } else if (hasSnapshot) {
       loadError.hidden = true;
     }
   } catch {
     if (isCurrentRefresh(refreshGeneration)) showUnavailable();
   } finally {
+    if (activeRefreshController === controller) {
+      activeRefreshController = undefined;
+    }
     refreshInFlight = false;
+    if (refreshQueued && document.visibilityState === "visible") {
+      refreshQueued = false;
+      void refreshWhenChanged();
+    }
   }
 }
 
-async function fetchVersion(): Promise<string> {
-  const response = await fetch("/api/version", { cache: "no-store" });
+async function fetchVersion(signal: AbortSignal): Promise<string> {
+  const response = await fetch("/api/version", { cache: "no-store", signal });
   if (!response.ok) throw new Error(`Version request failed (${response.status})`);
   const body = await response.json() as SnapshotVersion;
   if (typeof body.version !== "string") throw new Error("Version response is invalid");
   return body.version;
 }
 
-async function renderSnapshot(refreshGeneration: number): Promise<boolean> {
+async function renderSnapshot(
+  refreshGeneration: number,
+  signal: AbortSignal,
+): Promise<boolean> {
   try {
-    const response = await fetch("/api/snapshot", { cache: "no-store" });
+    const response = await fetch("/api/snapshot", { cache: "no-store", signal });
     if (!response.ok) throw new Error(`Snapshot request failed (${response.status})`);
     const snapshot = await response.json() as Snapshot;
     if (!isCurrentRefresh(refreshGeneration)) return false;

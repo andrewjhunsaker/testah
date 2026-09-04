@@ -232,15 +232,31 @@ def _sources_are_newer(root: Path, report_path: Path) -> bool:
         report_time = report_path.stat().st_mtime_ns
     except OSError:
         return False
-    return any(path.stat().st_mtime_ns > report_time for path in _source_paths(root))
+    for path in _source_paths(root):
+        try:
+            if path.stat().st_mtime_ns > report_time:
+                return True
+        except OSError:
+            return True
+    return False
 
 
 def _source_paths(root: Path) -> list[Path]:
-    paths = [root / path for path in SOURCE_FILES if (root / path).is_file()]
+    paths = []
+    for relative_path in SOURCE_FILES:
+        path = root / relative_path
+        paths.append(path if path.is_file() else path.parent)
     for directory in SOURCE_DIRECTORIES:
         source_root = root / directory
-        if source_root.exists():
-            paths.extend(path for path in source_root.rglob("*") if path.is_file())
+        if source_root.is_dir():
+            paths.append(source_root)
+            paths.extend(
+                path
+                for path in source_root.rglob("*")
+                if path.is_file() or path.is_dir()
+            )
+        else:
+            paths.append(source_root.parent)
     return paths
 
 

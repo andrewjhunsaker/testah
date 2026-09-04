@@ -37,6 +37,11 @@ function createFixtureRepository(
       '',
     ].join('\n'),
   )
+  mkdirSync(join(root, 'tests', 'specs'), { recursive: true })
+  writeFileSync(join(root, 'tests', 'specs', 'smoke.spec.ts'), "test('smoke')\n")
+  mkdirSync(join(root, 'requirements'))
+  writeFileSync(join(root, 'requirements', 'smoke.md'), '# Smoke requirement\n')
+  writeFileSync(join(root, 'playwright.config.ts'), 'export default {}\n')
   mkdirSync(join(root, 'reports'))
   writeCompletedReport(root, { passed: 33, failed: 1 })
   execFileSync('git', ['init', '--initial-branch=master'], { cwd: root })
@@ -320,6 +325,51 @@ test('Overview discards a refresh that was already running when hidden', async (
     await snapshot.setVisibility('visible')
     await expect(snapshot.count(31, 'passed')).toBeVisible()
     await expect(snapshot.count(3, 'failed')).toBeVisible()
+  } finally {
+    releaseVersion?.()
+    await cleanup(dashboard, fixtureRoot)
+  }
+})
+
+test('Overview refreshes immediately when visibility returns behind an old request', async ({
+  page,
+}) => {
+  const fixtureRoot = createFixtureRepository()
+  const dashboard = launchDashboard(fixtureRoot)
+  const snapshot = new CurrentSnapshotPage(page)
+  let holdNextVersion = false
+  let releaseVersion: (() => void) | undefined
+
+  await page.route('**/api/version', async (route) => {
+    if (holdNextVersion) {
+      holdNextVersion = false
+      await new Promise<void>((resolve) => {
+        releaseVersion = resolve
+      })
+    }
+    await route.continue().catch(() => undefined)
+  })
+
+  try {
+    await snapshot.installClock()
+    await snapshot.goto(await dashboard.url)
+    await expect(snapshot.count(33, 'passed')).toBeVisible()
+
+    const initialRequests = snapshot.versionRequestCount()
+    holdNextVersion = true
+    writeCompletedReport(fixtureRoot, { passed: 30, failed: 4 })
+    await page.clock.fastForward(2_000)
+    await expect.poll(() => snapshot.versionRequestCount()).toBe(initialRequests + 1)
+
+    await snapshot.setVisibility('hidden')
+    await snapshot.setVisibility('visible')
+    releaseVersion?.()
+
+    await expect
+      .poll(() => snapshot.versionRequestCount(), { timeout: 1_000 })
+      .toBe(initialRequests + 2)
+    await expect(snapshot.count(30, 'passed')).toBeVisible()
+    await expect(snapshot.count(4, 'failed')).toBeVisible()
   } finally {
     releaseVersion?.()
     await cleanup(dashboard, fixtureRoot)

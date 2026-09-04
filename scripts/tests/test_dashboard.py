@@ -64,9 +64,12 @@ def fixture_repository(
     (repo / "tests" / "specs" / "smoke.spec.ts").write_text(
         "test('smoke', () => {});\n", encoding="utf-8"
     )
+    (repo / "requirements").mkdir()
+    (repo / "requirements" / "smoke.md").write_text(
+        "# Smoke requirement\n", encoding="utf-8"
+    )
     playwright_config = repo / "playwright.config.ts"
-    if report_case == "older-than-playwright-config":
-        playwright_config.write_text("export default {};\n", encoding="utf-8")
+    playwright_config.write_text("export default {};\n", encoding="utf-8")
     if with_report:
         (repo / "reports").mkdir()
         report_path = repo / "reports" / "last-run.json"
@@ -288,3 +291,20 @@ def test_snapshot_version_changes_with_dashboard_evidence(tmp_path):
     write_completed_report(repo, passed=32, failed=2)
 
     assert snapshot_version(repo) != before
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        Path("tests/specs/smoke.spec.ts"),
+        Path("requirements/smoke.md"),
+        Path("playwright.config.ts"),
+    ],
+)
+def test_source_deletion_marks_the_latest_report_stale(relative_path, tmp_path):
+    """Removing covered source invalidates the report that described it."""
+    repo = fixture_repository(tmp_path, with_report=True)
+
+    (repo / relative_path).unlink()
+
+    assert build_snapshot(repo)["targets"][0]["latest_run"]["state"] == "stale"
