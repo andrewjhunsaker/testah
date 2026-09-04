@@ -158,8 +158,14 @@ def test_staging_push_opens_a_bot_authored_draft_promotion_pr():
 
     assert "push:\n    branches: [staging]" in workflow
     assert "keep-draft-current:\n    name: keep-draft-current" in workflow
+    assert "actions: read" in workflow
+    assert "PROMOTION_RUN_ID: ${{ github.run_id }}" in workflow
     assert "PROMOTION_RUN_ATTEMPT: ${{ github.run_attempt }}" in workflow
     assert '"$PROMOTION_RUN_ATTEMPT" -gt 1' in workflow
+    assert "actions/runs/${PROMOTION_RUN_ID}/attempts/1" in workflow
+    assert '"$first_attempt_conclusion" != "success"' in workflow
+    assert '"$first_attempt_head_sha" != "$STAGING_SHA"' in workflow
+    assert "unsafe workflow rerun returned promotion PR" in workflow
     assert "validating ready promotion PR" in workflow
     assert "pull-requests: write" in workflow
     assert "checks: write" in workflow

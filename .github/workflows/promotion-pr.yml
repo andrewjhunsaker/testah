@@ -5,6 +5,7 @@ on:
     branches: [staging]
 
 permissions:
+  actions: read
   checks: write
   contents: read
   pull-requests: write
@@ -17,6 +18,7 @@ jobs:
       - name: Open or refresh the bot-authored draft promotion PR
         env:
           GH_TOKEN: ${{ github.token }}
+          PROMOTION_RUN_ID: ${{ github.run_id }}
           PROMOTION_RUN_ATTEMPT: ${{ github.run_attempt }}
           STAGING_SHA: ${{ github.sha }}
         run: |
@@ -29,6 +31,20 @@ jobs:
             read -r number is_draft <<< "$existing"
             if [ "$is_draft" = "false" ]; then
               if [ "$PROMOTION_RUN_ATTEMPT" -gt 1 ]; then
+                gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
+                if ! first_attempt=$(gh api \
+                  "repos/${GITHUB_REPOSITORY}/actions/runs/${PROMOTION_RUN_ID}/attempts/1" \
+                  --jq '[.conclusion, .head_sha] | @tsv'); then
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: attempt 1 could not be verified" >&2
+                  exit 1
+                fi
+                IFS=$'\t' read -r first_attempt_conclusion first_attempt_head_sha <<< "$first_attempt"
+                if [ "$first_attempt_conclusion" != "success" ] \
+                  || [ "$first_attempt_head_sha" != "$STAGING_SHA" ]; then
+                  echo "unsafe workflow rerun returned promotion PR #$number to draft: attempt 1 did not validate this staging SHA" >&2
+                  exit 1
+                fi
+                gh pr ready "$number" --repo "$GITHUB_REPOSITORY"
                 echo "validating ready promotion PR #$number on workflow rerun"
               else
                 gh pr ready "$number" --repo "$GITHUB_REPOSITORY" --undo
