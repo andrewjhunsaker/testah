@@ -4,9 +4,14 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "test": "playwright test",
-    "report": "playwright show-report reports/html"
+    "report": "playwright show-report reports/html",
+    "dashboard:typecheck": "tsc --project tsconfig.dashboard.json --noEmit",
+    "dashboard:build": "tsc --project tsconfig.dashboard.json",
+    "dashboard": "pnpm dashboard:build && uv run python -m dashboard",
+    "test:dashboard": "pnpm dashboard:build && playwright test --config dashboard.playwright.config.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@playwright/test": "^1.62.1",
+    "typescript": "5.9.3"
   }
 }

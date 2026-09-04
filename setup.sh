@@ -24,33 +24,111 @@ note "A few questions; everything is skippable and re-runnable (Ctrl-C any time)
 
 # ---------------------------------------------------------------- 1) remote
 say "1/5 — Git remote"
+remote_ready=n
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
 if git remote get-url origin >/dev/null 2>&1; then
-  note "origin already set: $(git remote get-url origin) — skipping."
+  origin_url=$(git remote get-url origin)
+  origin_default=y
+  [ "$branch" = template ] && origin_default=n
+  note "origin is currently: $origin_url"
+  if ask "  Use this as the project remote?" "$origin_default"; then
+    remote_ready=y
+  else
+    read -r -p "  Correct project remote URL (blank to skip): " url
+    if [ -n "$url" ]; then
+      if [ "$branch" != template ]; then
+        note "Refusing to create a remote from $branch. Switch to template and rerun."
+        exit 1
+      fi
+      git remote set-url origin "$url" && git push -u origin "$branch" \
+        && remote_ready=y
+    else
+      note "remote setup skipped; origin was left unchanged."
+    fi
+  fi
 else
-  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)
-  read -r -p "  Connect a remote? [github/gitlab/bitbucket/skip] " prov
+  if [ "$branch" != template ]; then
+    note "Refusing to create a remote from $branch. Switch to template and rerun."
+    exit 1
+  fi
+  read -r -p "  Connect a remote? [github/skip] " prov
   case "$prov" in
     github)
       if have gh; then
         read -r -p "  Repo (owner/name): " slug
         gh repo create "$slug" --private --source . --push \
-          && note "created and pushed." || note "gh failed — add a remote manually later."
+          && { note "created and pushed."; remote_ready=y; } \
+          || note "gh failed — add a remote manually later."
       else
         read -r -p "  Remote URL (git@github.com:you/repo.git): " url
-        git remote add origin "$url" && git push -u origin "$branch"
+        git remote add origin "$url" && git push -u origin "$branch" \
+          && remote_ready=y
       fi ;;
-    gitlab)
-      if have glab; then
-        glab repo create --private && git push -u origin "$branch"
-      else
-        read -r -p "  Remote URL (git@gitlab.com:you/repo.git): " url
-        git remote add origin "$url" && git push -u origin "$branch"
-      fi ;;
-    bitbucket)
-      read -r -p "  Remote URL (git@bitbucket.org:you/repo.git): " url
-      git remote add origin "$url" && git push -u origin "$branch" ;;
     *) note "skipped — later: git remote add origin <url> && git push -u origin $branch" ;;
   esac
+fi
+
+if [ "$remote_ready" = y ]; then
+  if ! git config --replace-all remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; then
+    note "could not widen origin's fetch refspec; repository is not ready."
+    exit 1
+  fi
+
+  if have gh; then
+    if bash scripts/bootstrap_github_labels.sh; then
+      note "canonical GitHub triage labels ready."
+    else
+      note "could not provision triage labels; repository is not ready."
+      note "Authenticate gh, then rerun setup."
+      exit 1
+    fi
+  else
+    note "gh is required to provision labels and branch protection;"
+    note "repository is not ready. Install and authenticate gh, then rerun setup."
+    exit 1
+  fi
+
+  if ! bash scripts/bootstrap_release_branches.sh; then
+    note "staging needs a human-initialized remote master based on the pushed"
+    note "template branch. Create it in GitHub, then run:"
+    note "bash setup.sh"
+    note "repository is not ready until setup provisions branch protection."
+    exit 1
+  fi
+
+  if ! git fetch origin --prune; then
+    note "could not refresh the project branches; repository is not ready."
+    exit 1
+  fi
+
+  if ! gh repo edit --default-branch master; then
+    note "could not make master the GitHub default branch; repository is not ready."
+    exit 1
+  fi
+  if ! gh repo edit --enable-merge-commit --enable-rebase-merge=false --enable-squash-merge=false; then
+    note "could not require ancestry-preserving PR merges; repository is not ready."
+    exit 1
+  fi
+  repo_settings=$(gh repo view \
+    --json defaultBranchRef,mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed \
+    --jq '[.defaultBranchRef.name, .mergeCommitAllowed, .rebaseMergeAllowed, .squashMergeAllowed] | @tsv' \
+    2>/dev/null)
+  IFS=$'\t' read -r default_branch merge_allowed rebase_allowed squash_allowed <<< "$repo_settings"
+  if [ "$default_branch" != master ] \
+    || [ "$merge_allowed" != true ] \
+    || [ "$rebase_allowed" != false ] \
+    || [ "$squash_allowed" != false ]; then
+    note "GitHub must use default master and merge-commit-only PRs; repository is not ready."
+    exit 1
+  fi
+
+  if bash scripts/bootstrap_github_protections.sh; then
+    note "protected release flow ready: feature PRs -> staging -> human-approved master."
+  else
+    note "branch protection failed; repository is not ready."
+    note "Fix GitHub permissions or plan support, then rerun setup."
+    exit 1
+  fi
 fi
 
 # ------------------------------------------------------------ 2) toolchain
@@ -113,9 +191,11 @@ targets:
         path: $tpath
         auth: none
 EOF
-    sed -i.bak "s|process.env.TESTAH_BASE_URL ?? '[^']*'|process.env.TESTAH_BASE_URL ?? '$turl'|" playwright.config.ts \
-      && rm -f playwright.config.ts.bak
-    note "targets.yaml written; playwright baseURL -> $turl"
+    if ! node scripts/configure_playwright_target.mjs "$turl"; then
+      note "could not configure Playwright target metadata; fix the config and rerun."
+      exit 1
+    fi
+    note "targets.yaml written; Playwright target and report metadata -> $turl"
     if [ -d node_modules ] && ask "  Run the smoke test against $turl now?" y; then
       pnpm exec playwright test --grep @smoke \
         || note "smoke failed — edit tests/specs/smoke.spec.ts to assert something true about YOUR site, then re-run."

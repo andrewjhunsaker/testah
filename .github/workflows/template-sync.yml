@@ -1,9 +1,10 @@
 name: template-sync
 # Keeps the shareable `template` branch current: whenever framework (non-
 # project) paths change on master, they are checked out onto template.
-# Project-data paths (targets.yaml, page-maps/, requirements/, tests/specs,
-# tests/pages, tickets/, triage/, critiques/, reviews/, flake history,
-# docs/coverage, docs/plans, review packets) are NEVER synced.
+# Project-data paths (targets.yaml, target page maps/requirements/specs,
+# tickets/, triage/, critiques/, reviews/, flake history, docs/coverage,
+# docs/plans, review packets) are NEVER synced. The dashboard's exact map,
+# requirement, and POM are framework-owned exceptions.
 on:
   push:
     branches: [master]
@@ -33,10 +34,8 @@ jobs:
           git config user.name "testah-template-sync"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin master
-          git checkout origin/master -- \
-            agents scripts .github .claude CLAUDE.md setup.sh .mcp.json package.json \
-            pnpm-lock.yaml pyproject.toml uv.lock RULES.md README.md \
-            docs/spec.md docs/running-the-loop.md
+          git checkout origin/master -- scripts/sync_template_paths.sh
+          bash scripts/sync_template_paths.sh origin/master
           if git diff --cached --quiet; then
             echo "no framework changes to sync"
             exit 0

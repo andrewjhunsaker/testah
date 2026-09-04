@@ -1,4 +1,5 @@
 node_modules/
+dashboard/ui/dist/
 test-results/
 reports/*
 !reports/.gitkeep
@@ -11,3 +12,9 @@ __pycache__/
 .env.*
 .claude/settings.local.json
 .DS_Store
+.worktrees/
+
+# Local product planning and domain decisions
+CONTEXT.md
+docs/adr/
+docs/superpowers/plans/
