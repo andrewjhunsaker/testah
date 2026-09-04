@@ -284,7 +284,9 @@ def _source_fingerprint(root: Path) -> str:
             entries.append((f"{directory.as_posix()}/", None))
 
     digest = hashlib.sha256()
-    for relative_path, content in sorted(entries):
+    for relative_path, content in sorted(
+        entries, key=lambda entry: entry[0].encode("utf-8")
+    ):
         digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
         digest.update(b"missing" if content is None else b"file")

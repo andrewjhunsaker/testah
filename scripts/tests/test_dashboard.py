@@ -346,6 +346,12 @@ def test_copying_an_old_report_later_does_not_make_it_current(tmp_path):
 def test_producer_and_dashboard_compute_the_same_source_provenance(tmp_path):
     """The Playwright producer and Python consumer share one fingerprint contract."""
     repo = fixture_repository(tmp_path, with_report=False)
+    (repo / "tests" / "specs" / "Z.spec.ts").write_text(
+        "test('uppercase', () => {});\n", encoding="utf-8"
+    )
+    (repo / "tests" / "specs" / "a.spec.ts").write_text(
+        "test('lowercase', () => {});\n", encoding="utf-8"
+    )
     module_url = (
         Path(__file__).resolve().parents[1] / "testah_source_provenance.mjs"
     ).as_uri()

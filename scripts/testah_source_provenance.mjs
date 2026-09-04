@@ -26,7 +26,9 @@ export function sourceFingerprint(root = process.cwd()) {
     }
     collectFiles(root, absoluteDirectory, entries)
   }
-  entries.sort(([left], [right]) => left.localeCompare(right))
+  entries.sort(([left], [right]) =>
+    Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')),
+  )
 
   const digest = createHash('sha256')
   for (const [path, content] of entries) {
